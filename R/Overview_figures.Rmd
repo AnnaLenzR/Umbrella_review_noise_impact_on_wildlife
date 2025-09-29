@@ -45,12 +45,12 @@ pacman::p_load(
 # Load data
 ```{r}
 #Load data
-map <- read_csv(here("Data", "Datase1-Map","map.csv"))
-biblio <- read_csv(here("Data", "Dataset2-Bibliometric", "bibliometric.csv"))
-bib_data <- convert2df(here("Data", "Dataset2-Bibliometric", "bibliometric.bib"), dbsource = "scopus", format = "bibtex")
-dat_policy <- read.csv(here("Data", "Dataset3-Policy", "policy.csv"))
-pol_ci <- read_csv(here("Data", "Dataset3-Policy", "policy_track.csv"))
-dat_ceesat <- read.csv(here("Data", "Dataset5-CEESAT_processed", "ceesat2.csv"))
+map <- read_csv(here("Data", "Dataset1_map_data_extraction.csv"))
+biblio <- read_csv(here("Data", "Dataset2-Bibliometric", "bibliometric_data.csv"))
+bib_data <- convert2df(here("Data", "bibliometric.bib"), dbsource = "scopus", format = "bibtex")
+dat_policy <- read.csv(here("Data", "Dataset_3_policy_data_extraction.csv"))
+pol_ci <- read_csv(here("Data", "Dataset_3.1_policy_citation_counts_PlumX.csv"))
+dat_ceesat <- read.csv(here("Data", "Dataset5_ceesat_processed.csv"))
 ```
 
 
