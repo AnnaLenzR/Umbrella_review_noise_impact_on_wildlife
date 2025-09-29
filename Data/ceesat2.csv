@@ -1,0 +1,47 @@
+study_id,study_type_title_abstract,quantitative,claim_used_meta_analysis,pooled_effect_meta_an,doi,cited_in_policy,CEESAT1.1,CEESAT2.1,CEESAT3.1,CEESAT3.2,CEESAT4.1,CEESAT4.2,CEESAT4.3,CEESAT5.1,CEESAT5.2,CEESAT6.1,CEESAT6.2,CEESAT6.3,CEESAT7.1,CEESAT7.2,CEESAT7.3,CEESAT8.1,score_new
+affatati_2023,Systematic review,no,no ,no,10.3389/fmars.2023.1222523 ,no,1,0,3,1,1,0,1,1,0,1,3,0,1,N/A,N/A,4,17
+afridi_2024,Systematic review,no,no ,no,10.1109/ICUAS60882.2024.10557094,no,1,0,1,3,1,0,0,0,0,0,0,0,0,N/A,N/A,1,7
+arcangeli_2023,Systematic review,no,no ,no,10.3390/ijerph20010591,no,4,0,3,1,1,1,1,1,1,0,1,0,1,N/A,N/A,3,18
+carlos_2024,Systematic review,no,no ,no,10.36677/elperiplo.v0i46.21010,no,1,0,3,3,1,0,1,0,0,3,3,0,1,N/A,N/A,1,17
+chen_2023,Systematic review,no,no ,no,10.1002/ece3.10259,no,4,0,1,1,3,1,4,0,0,3,3,4,3,N/A,N/A,1,28
+dejong_2020,Meta-analysis,yes,yes,no,10.1007/s11160-020-09598-9,yes,3,0,1,1,1,0,1,0,0,1,1,0,0,N/A,N/A,1,10
+difranco_2020,Systematic review,no,no ,no,10.1016/j.marpolbul.2020.111450,yes,1,0,1,1,1,0,1,0,0,1,3,0,1,N/A,N/A,1,11
+dixon_2022,Systematic review,no,no ,no,dx.doi.org/10.1139/er-2022-0022,no,1,0,1,3,0,0,0,0,0,1,1,0,1,N/A,N/A,3,11
+duarte_2021,Systematic review,no,no ,no,10.1126/science.aba4658,yes,1,0,1,1,3,0,1,0,0,1,0,0,1,N/A,N/A,1,10
+easton_2024,Systematic review,no,no ,no,10.1016/j.eiar.2024.107560,no,1,0,1,1,1,0,0,0,0,3,1,0,1,N/A,N/A,4,13
+engel_2024,Systematic review,yes,yes,no,10.1007/s40726-024-00329-3,no,1,0,0,1,0,0,1,0,0,1,1,0,1,N/A,N/A,3,9
+engel_2024b,Systematic review,no,no ,no,10.25144/16602,no,1,0,1,1,1,0,1,0,0,1,1,0,1,N/A,N/A,1,9
+erbe_2019*,Systematic review,no,no ,no,10.3389/fmars.2019.00606,yes,1,0,1,1,1,0,0,0,0,1,3,0,1,N/A,N/A,1,10
+farr_2021,Systematic review,no,no ,no,10.1016/j.ocecoaman.2021.105611,yes,1,0,1,1,1,0,0,0,0,1,3,0,1,N/A,N/A,1,10
+hague_2024,Systematic map,no,no ,no,10.3389/fevo.2022.827440,no,3,3,4,4,3,3,0,0,0,3,0,0,3,N/A,N/A,3,29
+halfwerk_2021,Systematic review,no,no ,no,10.3389/fevo.2021.765950,no,4,0,3,1,1,0,4,0,0,3,3,0,1,N/A,N/A,1,21
+jerem_2020,Systematic review,yes,no ,no,10.1111/cobi.13510,no,1,0,3,1,3,0,4,0,0,3,1,0,1,N/A,N/A,4,21
+jiang_2022,Systematic review,no,no ,no,10.1016/j.scitotenv.2022.157925,no,1,0,3,1,3,0,1,0,0,1,3,0,1,N/A,N/A,1,15
+johnson_2022,Systematic review,no,no ,no,10.1016/j.trd.2022.103375,no,3,0,3,1,1,0,1,0,0,1,1,0,1,N/A,N/A,1,13
+nelms_2016,Systematic review,no,no ,no,10.3389/fevo.2023.1130075,yes,3,0,1,3,1,0,0,0,0,1,1,0,0,N/A,N/A,1,11
+nelson_2024,Systematic review,no,no ,no,10.1038/s41559-023-02257-9,no,1,0,1,1,1,1,0,0,0,3,1,0,0,N/A,N/A,4,13
+norman_2022,Systematic review,yes,no ,no,10.3389/fmars.2022.804218,yes,1,0,1,3,1,0,0,0,0,1,1,0,1,N/A,N/A,4,13
+pires_2021,Systematic review,no,no ,no,10.1007/s11852-021-00832-5,no,1,0,1,1,3,0,0,0,0,1,1,0,0,N/A,N/A,1,9
+shannon_2015,Systematic review,yes,yes,no,10.1111/brv.12207,yes,1,0,1,1,1,0,0,0,0,3,3,4,0,N/A,N/A,1,15
+sordello_2020,Systematic map,no,no ,no,10.1186/s13750-020-00202-y,yes,4,0,4,4,4,4,4,0,0,4,4,4,1,N/A,N/A,4,41
+williams_2015*,Systematic map,no,no ,no,10.1016/j.ocecoaman.2015.05.021,yes,0,0,1,1,1,0,0,0,0,1,1,0,1,N/A,N/A,1,7
+williams_2025,Systematic review,no,no ,no,10.1016/j.marpolbul.2025.118135 ,no,1,0,3,3,1,0,0,0,0,1,0,0,0,N/A,N/A,1,10
+zaﬀaroni_2023,Systematic review,no,no ,no,10.1080/09524622.2022.2070543,no,1,0,1,1,1,0,0,0,0,1,3,0,1,N/A,N/A,1,10
+zamora_2021,Systematic review,no,no ,no,n/a,no,1,0,1,3,1,0,0,0,0,1,0,0,0,N/A,N/A,0,7
+benitez_2010,Meta-analysis,yes,yes,yes,10.1016/j.biocon.2010.02.009,yes,3,4,1,4,4,1,1,4,1,4,1,3,4,4,4,4,47
+cox_2016,Meta-analysis,yes,yes,yes,doi.org/10.1121/2.0000291,yes,1,0,1,1,1,0,0,0,0,1,1,0,3,3,1,1,14
+cox_2018,Meta-analysis,yes,yes,yes,10.1111/gcb.14106,yes,1,0,1,1,1,0,1,0,0,0,1,0,3,3,1,0,13
+davies_2024,Meta-analysis,yes,yes,yes,10.1111/gcb.17593,no,1,0,0,0,1,0,1,0,0,1,1,0,3,3,1,3,15
+duquette_2021,Meta-analysis,yes,yes,yes,10.1007/s40726-024-00329-3,no,3,3,3,1,3,0,1,0,0,3,3,0,3,3,1,1,28
+gomes_2022,Meta-analysis,yes,yes,yes,10.3389/fevo.2022.827440S,no,3,0,1,1,3,0,1,0,0,3,3,0,3,3,1,0,22
+gomez_2016,Systematic review,yes,yes,yes,10.1093/beheco/arw060,yes,3,0,1,1,1,0,1,0,0,3,3,0,3,0,1,1,18
+guenant_2023,Meta-analysis,yes,yes,yes,10.1002/ece3.9990,no,3,0,1,1,1,1,1,0,0,1,0,0,3,3,1,1,17
+hardig_2019,Systematic review,yes,yes,yes,10.1093/beheco/arz114,yes,1,0,3,1,1,0,1,0,0,3,1,0,3,3,1,1,19
+kunc_2019,Meta-analysis,yes,yes,yes,10.1098/rsbl.2019.0649,yes,1,0,1,1,1,0,1,0,0,1,3,0,3,3,1,1,17
+kunc_2021,Meta-analysis,yes,yes,yes,10.1111/gcb.15428,no,1,0,1,1,1,0,1,0,0,1,3,0,3,3,1,1,17
+li_2025,Meta-analysis,yes,yes,yes,10.1016/j.biocon.2025.110974,no,3,0,1,1,1,0,0,0,0,1,1,0,3,3,3,1,18
+murchy_2019,Meta-analysis,yes,yes,yes,10.1121/2.0001217,yes,1,0,1,1,1,0,0,0,0,1,0,0,3,1,1,1,11
+roca_2016,Meta-analysis,yes,yes,yes,10.1093/beheco/arw060,yes,3,0,3,1,1,0,1,0,0,3,3,0,3,3,1,1,23
+stankowich_2008,Meta-analysis,yes,yes,yes,10.1016/j.biocon.2008.06.026,yes,1,0,1,1,1,0,0,0,0,1,1,0,3,1,1,1,12
+tiddy_2024,Meta-analysis,yes,yes,yes,10.1016/j.envpol.2024.125017,no,1,0,1,1,3,1,0,0,0,3,1,0,3,1,3,1,19
+wenger_2017,Meta-analysis,yes,yes,yes,10.1111/faf.12218,yes,1,0,1,3,1,0,0,0,0,1,3,0,3,3,1,1,18
