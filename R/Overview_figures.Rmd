@@ -46,7 +46,7 @@ pacman::p_load(
 ```{r}
 #Load data
 map <- read_csv(here("Data", "Dataset1_map_data_extraction.csv"))
-biblio <- read_csv(here("Data", "Dataset2-Bibliometric", "bibliometric_data.csv"))
+biblio <- read_csv(here("Data", "Dataset2_bibliometric_data.csv"))
 bib_data <- convert2df(here("Data", "bibliometric.bib"), dbsource = "scopus", format = "bibtex")
 dat_policy <- read.csv(here("Data", "Dataset_3_policy_data_extraction.csv"))
 pol_ci <- read_csv(here("Data", "Dataset_3.1_policy_citation_counts_PlumX.csv"))
@@ -815,7 +815,7 @@ cols <- c(
 )
 
 # Save as PDF
-pdf(here("Figures/raw", "Figure_4b_chorddiagram.pdf"), width = 12, height = 9)
+#pdf(here("Figures/raw", "Figure_4b_chorddiagram.pdf"), width = 12, height = 9)
 
 # Plot chord diagram
 circos.clear()
@@ -843,7 +843,7 @@ circos.trackPlotRegion(track.index = 1, panel.fun = function(x, y) {
               }, 
               bg.border = NA)
 
-dev.off()   # close PNG
+#dev.off()   # close PNG
 ```
 
 
