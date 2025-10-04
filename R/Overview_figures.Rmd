@@ -34,7 +34,8 @@ pacman::p_load(
   rnaturalearthdata,
   rnaturalearth,
   ggalluvial,
-  circlize
+  circlize,
+  countrycode
 )
 
 
@@ -61,7 +62,6 @@ dat_ceesat <- read.csv(here("Data", "Dataset5_ceesat_processed.csv"))
 
 ```{r}
 # 1. Process the quantitative/qualitative column
-# Handle possible typos/case/whitespace, and only count unique study_id per type
 quant_type <- map %>%
   select(study_id, year, quantitative) %>%
   mutate(quant = case_when(
@@ -94,7 +94,7 @@ fig1_A <- ggplot(quant_counts, aes(x = year, y = paper_count, fill = quant)) +
                     )+
   labs(
     x = NULL,
-    y = "Number of reviews"#,
+    y = "Number of syntheses"#,
   )+
   scale_y_continuous(
   limits = c(0, 12),
@@ -171,7 +171,7 @@ fig1_B <- upset(
         label = paste("Average number of ecosystem types\nper study:1.56 (50 Studies)"),
           vjust = 1, hjust = 1
       ) +
-      ylab("Number of reviews") +
+      ylab("Number of syntheses") +
       scale_fill_manual(
         values = c('bars_color' = '#7370b3'), 
         guide = 'none'
@@ -256,7 +256,7 @@ fig1_C <- upset(
          label = paste("Average number of noise sources\nper study: 2.84 (50 Studies)"),
           vjust = 1, hjust = 1
       ) +
-      ylab("Number of reviews") +
+      ylab("Number of syntheses") +
       scale_fill_manual(
         values = c('bars_color' = '#7370b3'), 
         guide = 'none'
@@ -340,7 +340,7 @@ fig1_D <- upset(
         label = paste("Average outcomes per study:\n2.86 (50 Studies)"),
         vjust = 1, hjust = 1
       ) +
-      ylab("Number of reviews") +
+      ylab("Number of syntheses") +
       scale_fill_manual(
         values = c('bars_color' = '#7370b3'), 
         guide = 'none'
@@ -387,8 +387,8 @@ fig1 <- fig1_A / fig1_B / fig1_C / fig1_D +
 
 # Save plot
 fig1
-#ggsave(here("Figures/raw", "figure_1.pdf"), width = 11, height = 9, dpi = 300)
-#ggsave(here("Figures/raw", "figure_1.png"), width = 11, height = 9, dpi = 300)
+#ggsave(here("Figures/raw", "figure_1.pdf"), width = 11, height = 17, dpi = 300)
+#ggsave(here("Figures/raw", "figure_1.png"), width = 11, height = 17, dpi = 300)
 
 ```
 
@@ -518,7 +518,7 @@ fig3_a <- ggplot(outcome_trends, aes(
   ) +
   labs(
      x = NULL,
-    y = "Number of reviews"#,
+    y = "Number of syntheses"#,
   ) +
   scale_x_continuous(breaks = seq(from = min(outcome_trends$year), 
                                   to = max(outcome_trends$year), by = 1)
@@ -577,7 +577,7 @@ fig3_b <- ggplot(noise_trends, aes(
   ) +
    labs(
      x = NULL,
-    y = "Number of reviews"#,
+    y = "Number of syntheses"#,
   ) +
   scale_x_continuous(breaks = seq(from = min(noise_trends$year), 
                                   to = max(noise_trends$year), by = 1)
@@ -637,7 +637,7 @@ fig3_c <-ggplot(ecosystem_trends, aes(
   ) +
   labs(
      x = NULL,
-    y = "Number of reviews"#,
+    y = "Number of syntheses"#,
   ) +
   scale_x_continuous(breaks = seq(from = min(ecosystem_trends$year), 
                                   to = max(ecosystem_trends$year), by = 1)
@@ -659,7 +659,9 @@ fig3_c
 ## Patchwork plots-Figure 3
 ```{r}
 
-fig3_a + fig3_b + fig3_c + plot_layout(nrow = 3) + plot_annotation(tag_levels = "A")
+fig3 <- fig3_a + fig3_b + fig3_c + plot_layout(nrow = 3) + plot_annotation(tag_levels = "A")
+
+fig3
 #ggsave(here("Figures/raw", "Figure_3_trends.pdf"), width = 11, height = 10, dpi = 300)
 #ggsave(here("Figures/raw", "Figure_3_trends.png"), width = 11, height = 10, dpi = 300)
 
@@ -755,8 +757,7 @@ fig4_a
 ```
 
 
-# Panel B: Chord diagram of authors collaborations
-
+## Panel B: Chord diagram of authors collaborations
 ```{r}
 # Load bibliometric data
 dim(bib_data) 
@@ -949,7 +950,7 @@ fig5
 
 #¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
 
-# Figure 6: CEESAT scores: CEESAT question scores (all reviews) 
+# Figure 6: CEESAT scores: CEESAT question scores (all syntheses) 
 
 ```{r}
 # Labels:
@@ -1107,34 +1108,33 @@ main_analysis
 # Supplementary figures
 #¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
 
-
-### Figure S3: Citation count of the three most cited reviews
+### Figure S3: Academic citation count and the three most cited syntheses
 ```{r}
 # 1. Create empty label column
 biblio$label <- NA
 
 # 2. Assign labels to the three top-cited papers
-bib_df$label[grepl("Benítez-López", bib_df$authors) & bib_df$year == 2010] <- "Benítez-López et al., 2010"
-bib_df$label[grepl("Shannon",       bib_df$authors) & bib_df$year == 2016] <- "Shannon et al., 2016"
-bib_df$label[grepl("Duarte",        bib_df$authors) & bib_df$year == 2021] <- "Duarte et al., 2021"
+biblio$label[grepl("Benítez-López", biblio$authors) & biblio$year == 2010] <- "Benítez-López et al., 2010"
+biblio$label[grepl("Shannon",       biblio$authors) & biblio$year == 2016] <- "Shannon et al., 2016"
+biblio$label[grepl("Duarte",        biblio$authors) & biblio$year == 2021] <- "Duarte et al., 2021"
 
 # 3. Make the citation scatterplot
-fig_S3 <- ggplot(bib_df, aes(x = year, y = cited_by)) +
+fig_S3 <- ggplot(biblio, aes(x = year, y = cited_by)) +
   geom_jitter(size = 4.3, alpha = 0.25, color = "#8074A8FF", width = 0.3, height = 0) +
-  geom_point(data = subset(bib_df, !is.na(label)), 
+  geom_point(data = subset(biblio, !is.na(label)), 
              aes(x = year, y = cited_by), 
              color = "#8074A8FF", size = 4.3) +
-  geom_label(data = subset(bib_df, !is.na(label)), 
+  geom_label(data = subset(biblio, !is.na(label)), 
              aes(label = label), 
              hjust = -0.1, vjust = 0.4, size = 3.5,
              fill = "white", color = "black"
   ) +
    labs(
      x = NULL,
-    y = "Citation count"#,
+    y = "Academic citation count"#,
   ) +
-  scale_x_continuous(breaks = seq(from = min(bib_df$year), 
-                                  to = max(bib_df$year), by = 1)
+  scale_x_continuous(breaks = seq(from = min(biblio$year), 
+                                  to = max(biblio$year), by = 1)
                      )+
   theme_minimal(base_size = 13) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
@@ -1152,8 +1152,8 @@ fig_S3 <- ggplot(bib_df, aes(x = year, y = cited_by)) +
 fig_S3
 
 #Save
-#ggsave(here("Figures/raw", "Figure_S3_citationcount.pdf"), width = 10, height = 7, dpi = 300)
-#ggsave(here("Figures/raw", "Figure_S3_citationcount.png"), width = 16, height = 10, dpi= 300)  
+#ggsave(here("Figures/raw", "Figure_S3_academic_citatation_count.pdf"), width = 10, height = 7, dpi = 300)
+#ggsave(here("Figures/raw", "Figure_S3_academic_citation_count.png"), width = 16, height = 10, dpi= 300)  
 
 
 ```
@@ -1435,7 +1435,7 @@ figS5_a <- ggplot(policytopic, aes(
   ) +
   labs(
      x = NULL,
-    y = "Number of reviews"
+    y = "Policy documents citing syntheses"
   ) +
   scale_x_continuous(breaks = seq(from = min(policytopic$policy_year), 
                                   to = max(policytopic$policy_year), by = 1)
@@ -1495,7 +1495,7 @@ figS5_b <- ggplot(policy_eco, aes(
   ) +
   labs(
      x = NULL,
-    y = "Number of reviews"#,
+    y = "Policy documents citing syntheses"#,
   ) +
   scale_x_continuous(breaks = seq(from = min(policy_eco$policy_year), 
                                   to = max(policy_eco$policy_year), by = 1)
@@ -1524,16 +1524,7 @@ policytype <- dat_policy %>%
   distinct(study_id, policy_year, policy_document_type) %>%
   count(policy_year, policy_document_type, name = "n")
 
-# Step 2: Dynamic colour palette (viridis)
-cats <- sort(unique(policytype$policy_document_type))
-n_cat <- length(cats)
 
-pal <- if (n_cat <= 12) {
-  viridis(n_cat, option = "D")
-} else {
-  colorRampPalette(viridis(12, option = "D"))(n_cat)
-}
-names(pal) <- cats
 
 # Step 3: Plot (horizontal stacked bar with legend circles)
 figS5_c <- ggplot(policytype, aes(
@@ -1562,7 +1553,7 @@ figS5_c <- ggplot(policytype, aes(
   ) +
   labs(
      x = NULL,
-    y = "Number of reviews"
+    y = "Policy documents citing syntheses"
   ) +
   scale_x_continuous(breaks = seq(from = min(policytype$policy_year), 
                                   to = max(policytype$policy_year), by = 1)
@@ -1594,8 +1585,6 @@ figS5
 #¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
 
 ## Figure S6: Policy citation publication year of the REVIEW and the total policy citation
-
-
 ```{r}
 # filter by policy cited or not
 pol_fil <- pol_ci %>% 
@@ -1626,7 +1615,7 @@ fig_S6 <- ggplot(pol_cit, aes(x = year, y = unique_policy_citations)) +
   ) +
    labs(
      x = NULL,
-    y = "Citation count"#,
+    y = "Policy documents citing syntheses"#,
   ) +
   scale_x_continuous(breaks = seq(from = min(pol_cit$year), 
                                   to = max(pol_cit$year), by = 1)
@@ -1647,8 +1636,8 @@ fig_S6 <- ggplot(pol_cit, aes(x = year, y = unique_policy_citations)) +
 fig_S6
 
 #Save
-#ggsave(here("Figures/raw", "Figure_S6_policycit.pdf"), width = 10, height = 7, dpi = 300)
-#ggsave(here("Figures/raw", "Figure_S56_policycit.pdf"), width = 10, height = 7, dpi = 300)
+#ggsave(here("Figures/raw", "Figure_S6_policyciting.pdf"), width = 10, height = 7, dpi = 300)
+#ggsave(here("Figures/raw", "Figure_S6_policyciting.png"), width = 10, height = 7, dpi = 300)
 ```
 
 
@@ -1658,7 +1647,6 @@ fig_S6
 
 ```{r}
 # Alluvial plot with consistent pastel colors by Document Type ----
-
 dat <- dat_policy |> 
   select(policy_topic, ecological_context, policy_document_type)
 
@@ -1737,27 +1725,84 @@ figS7
 
 #¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
 # Figure S8 - Geographical distribution of policy
-## Panel A: Top 10 policy document countries
 
+## Panel A: Geographical distribution policy map
 ```{r}
-# Step 1: Read data and process outcomes
-#dat_policy <- read_csv(here("Data", "policy.csv"))
+policy_counts <- dat_policy %>%
+  mutate(policy_country_clean = case_when(
+    policy_country %in% c("Northern Ireland", "Scotland", "United Kingdom") ~ "United Kingdom",
+    policy_country %in% c("USA", "U.S.A.", "United States") ~ "United States of America",
+    TRUE ~ policy_country
+  )) %>%
+  filter(policy_country_clean != "International") %>%
+  count(policy_country_clean, name = "n", sort = TRUE)
 
-head(dat_policy)
+# Get the base count for the EU
+eu_base_count <- policy_counts %>%
+  filter(policy_country_clean == "European Union") %>%
+  pull(n)
+
+# Get the counts for individual countries
+country_specific_counts <- policy_counts %>%
+  filter(policy_country_clean != "European Union")
+# ----------------------------------------------------
+# CREATE FINAL COUNTS
+# ----------------------------------------------------
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+map_data <- world %>%
+  left_join(country_specific_counts, by = c("name" = "policy_country_clean")) %>%
+  mutate(is_eu = !is.na(countrycode(name, "country.name", "eu28"))) %>%
+  mutate(n_final = case_when(
+    # For EU countries that ALSO have their own policies (e.g., Germany), ADD the counts.
+    is_eu & !is.na(n) ~ n + eu_base_count,
+    # For EU countries with NO specific policies, use the base EU count.
+    is_eu & is.na(n)  ~ eu_base_count,
+    # For non-EU countries, just use their own count.
+    !is_eu            ~ n,
+    # A fallback for any other case
+    TRUE              ~ n
+  ))
+
+# PLOT THE MAP
+fig_S8a <- ggplot(data = map_data) +
+  geom_sf(aes(fill = n_final), color = NA) + 
+  scale_fill_paletteer_c("ggthemes::Purple",
+                         na.value = "#D8D8D8FF",
+                         labels = number_format(accuracy = 1)) +
+  labs(
+    fill = "Combined policy count", # <-- Updated label for clarity
+    caption = "EU countries are shown with a base count of 24, plus any country-specific counts."
+  ) +
+  theme_void() +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 10),
+    plot.caption = element_text(hjust = 0.5, size = 8, margin = margin(t = 5)) # Style the caption
+  ) +
+  guides(fill = guide_colorbar(
+    title.position = "top",
+    barwidth = 15,
+    barheight = 0.5
+  ))
+
+
+fig_S8a
+#ggsave(here("Figures/raw", "Figure_S8a_map_policy_countries.pdf"), width = 16, height = 14)
+#ggsave(here("Figures/raw", "Figure_S8a_map_policy_countries.png"), width = 16, height = 14, dpi = 300)
+```
 
 
 
+## Panel B: Top 10 policy document countries
+```{r}
 # Clean policy_country
 dat_policy <- dat_policy %>%
   mutate(policy_country = case_when(
-    policy_country %in% c("Northern Ireland", "Scotland") ~ "United Kingdom",
+    policy_country %in% c("Northern Ireland", "Scotland", "United Kingdom") ~ "United Kingdom",
     TRUE ~ policy_country
   ))
-
-# Standardize country names using countrycode (safer mapping)
-dat_policy$country_clean <- countrycode(dat_policy$policy_country,
-                                origin = "country.name",
-                                destination = "country.name")
 
 # Clean and count countries
 policy_country <- dat_policy %>%
@@ -1772,23 +1817,23 @@ policy_country_top10 <- policy_country %>%
   slice_max(count, n = 10)
 
 # Plot
-fig_S8a <- ggplot(policy_country_top10, 
+fig_S8b <- ggplot(policy_country_top10, 
        aes(x = reorder(policy_country, count),
            y = count,
            fill = policy_country)
        ) +
     geom_col(fill = "#8074A8FF", width = 0.9) +
     geom_text(aes(label = count), 
-              hjust = 1.2, colour = "white", size = 4
+              hjust = 1.2, colour = "white", size = 5
               ) +
     labs(
         #title = "Policy document countries",
         x = NULL,
-        y = "Policy document count"
+        y = "Policy documents count"
     ) +
    theme_minimal(base_size = 13) +
-  theme(axis.text.x = element_text(size = 10),
-        axis.text.y = element_text(size = 10),
+  theme(axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14),
     legend.position = "inside",
     #legend.position.inside = c(.15, .65),
     #legend.text = element_text(size = 9),
@@ -1798,74 +1843,147 @@ fig_S8a <- ggplot(policy_country_top10,
   coord_flip()
 
 
-fig_S8a
-#ggsave(here("Figures/raw", "Figure_S8a_toppol_countries.pdf"), width = 12, height = 7, dpi= 300)
-#ggsave(here("Figures/raw", "Figure_S8a_toppol_countries.png"), width = 12, height = 7, dpi = 300)
-
-```
-
-## Panel B: Geographical distribution policy map
-```{r}
-pol_coun <- read_csv(here("Data", "Dataset3-Policy", "policy.csv"))
-# Clean policy_country
-pol_coun <- pol_coun %>%
-  mutate(policy_country = case_when(
-    policy_country %in% c("Northern Ireland", "Scotland") ~ "United Kingdom",
-    policy_country %in% c("USA", "U.S.A.", "United States of America", "United States") ~ "United States of America",
-    policy_country %in% c("International", "European Union") ~ NA_character_, # drop these
-    TRUE ~ policy_country
-  ))
-
-# Standardize country names using countrycode (safer mapping)
-pol_coun$country_clean <- countrycode(pol_coun$policy_country,
-                                origin = "country.name",
-                                destination = "country.name")
-
-# Check which didn’t match
-unique(pol_coun$policy_country[is.na(pol_coun$country_clean)])
-
-# Count policies per country
-policy_counts <- pol_coun %>%
-  filter(!is.na(country_clean)) %>%
-  count(country_clean)
-
-# Load world map
-world <- ne_countries(scale = "medium", returnclass = "sf")
-
-# 🔗 Join counts with map
-map_data <- world %>%
-  left_join(policy_counts, by = c("name" = "country_clean"))
-
-# Plot map
-fig_S8b<- ggplot(map_data) +
-          geom_sf(aes(fill = n), color = NA) +
-          scale_fill_paletteer_c("ggthemes::Purple", 
-                         na.value = "#D8D8D8FF",
-                         labels = number_format(accuracy = 1)) +
-          labs(
-               fill = "Policy country count")+
-          theme_void() +
-  theme(
-    legend.position = "bottom",
-    legend.title = element_text(size = 10),
-    legend.text = element_text(size = 10),
-  ) +
-  guides(fill = guide_colorbar(
-    title.position = "top",
-    barwidth = 15,
-    barheight = 0.5
-  ))
 fig_S8b
-#ggsave(here("Figures/raw", "Figure_S8b_policy_countries.pdf"), width = 16, height = 14)
-#ggsave(here("Figures/raw", "Figure_Sb_policy_countries.png"), width = 16, height = 14, dpi = 300)
+#ggsave(here("Figures/raw", "Figure_S8b_toppol_countries.pdf"), width = 11, height = 8, dpi= 300)
+#ggsave(here("Figures/raw", "Figure_S8b_toppol_countries.png"), width = 11, height = 8, dpi = 300)
 ```
 
 
 #¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
 # Figure S9: Annual trends cited and not cited in policy
 
-## Panel A: Outcome per time cited in policy
+```{r}
+# Tidy data
+tidy_trends <- map %>%
+  select(study_id, year, cited_policy, outcome_category, noise_source, ecosystem_type) %>%
+  pivot_longer(
+    cols = c(outcome_category, noise_source, ecosystem_type),
+    names_to = "category_group",
+    values_to = "category_value"
+  ) %>%
+  filter(!is.na(category_value), category_value != "") %>%
+  separate_rows(category_value, sep = "[,;]\\s*") %>%
+  mutate(category_value = str_trim(category_value)) %>%
+  
+  # --- NEW: Filter out "NA" values as requested ---
+  filter(category_value != "NA") %>%
+  
+  group_by(year, cited_policy, category_group, category_value) %>%
+  summarise(n = n_distinct(study_id), .groups = "drop")
 
+# Plotting function
+create_trend_plot <- function(df, legend_title, plot_title = NULL) {
+  
+  ggplot(df, aes(x = year, y = n, fill = category_value)) +
+    geom_col(width = 0.8, position = position_stack()) +
+    
+    # Count for each segment inside the bar
+    geom_text(
+      aes(label = n),
+      position = position_stack(vjust = 0.5),
+      size = 2.5,
+      colour = "white",
+      fontface = "bold"
+    ) +
+    
+    scale_fill_paletteer_d("ggthemes::Purple_Pink_Gray", name = legend_title) +
+    scale_x_continuous(
+      breaks = seq(2008, 2025, 1),
+      limits = c(2008, 2025)
+    ) +
+    scale_y_continuous(
+      limits = c(0, 30),
+      breaks = seq(0, 30, 5)
+  )+ 
+    labs(
+      title = plot_title, # Title will be applied only if provided
+      x = NULL,
+      y = "Number of syntheses"
+    ) +
+    theme_minimal(base_size = 12) +
+    theme(
+      panel.grid = element_blank(),
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      legend.title = element_text(face = "bold", size = 10),
+      legend.text = element_text(size = 9),
+      plot.title = element_text(face = "bold", size = 14, hjust = 0.5) # Larger title
+    )
+}
+
+
+```
+
+### Patchwork
+```{r}
+# --- STEP 3: CORRECTED FINAL ASSEMBLY ---
+
+
+p_A <- tidy_trends %>%
+  filter(category_group == "outcome_category", cited_policy == "yes") %>%
+  create_trend_plot(legend_title = "Outcome", plot_title = "Cited in Policy") +
+  theme(legend.position = "none")
+
+p_B <- tidy_trends %>%
+  filter(category_group == "outcome_category", cited_policy == "no") %>%
+  create_trend_plot(legend_title = "Outcome", plot_title = "Not Cited in Policy") +
+  theme(legend.position ="inside")
+
+p_C <- tidy_trends %>%
+  filter(category_group == "noise_source", cited_policy == "yes") %>%
+  create_trend_plot(legend_title = "Noise Source") +
+  theme(legend.position = "none")
+
+p_D <- tidy_trends %>%
+  filter(category_group == "noise_source", cited_policy == "no") %>%
+  create_trend_plot(legend_title = "Noise Source") +
+  theme(legend.position ="inside")
+
+p_E <- tidy_trends %>%
+  filter(category_group == "ecosystem_type", cited_policy == "yes") %>%
+  create_trend_plot(legend_title = "Environment") +
+  theme(legend.position = "none")
+
+p_F <- tidy_trends %>%
+  filter(category_group == "ecosystem_type", cited_policy == "no") %>%
+  create_trend_plot(legend_title = "Environment") +
+  theme(legend.position ="inside")
+
+# --- ASSEMBLE THE FINAL FIGURE (REVISED LOGIC) ---
+
+# Row 1: X-axis is now visible. Legend position is controlled here.
+row1 <- p_B + 
+        (p_A + theme(axis.title.y = element_blank())) +
+        plot_layout(guides = "collect") #& theme(legend.position = 'inside')
+
+# Row 2: X-axis is now visible. Legend position is controlled here.
+row2 <- p_D + 
+        (p_C + theme(axis.title.y = element_blank())) +
+        plot_layout(guides = "collect") #& theme(legend.position = 'inside')
+        
+# Row 3: X-axis was always visible. Legend position is controlled here.
+row3 <- p_F + 
+        (p_E + theme(axis.title.y = element_blank())) +
+        plot_layout(guides = "collect") #& theme(legend.position = 'inside')
+
+# Combine the three rows vertically and add the A-F panel tags
+final_figure_corrected <- (row1 / row2 / row3) +
+  plot_annotation(tag_levels = 'A')
+
+# Display the corrected figure
+final_figure_corrected
+
+# To save the figure
+ggsave(here("Figures/raw", "Final_fig_trends.pdf"), width = 20, height = 18, dpi = 300)
+ggsave(here("Figures/raw", "Final_fig_trends.png"), width = 20, height = 18, dpi = 300)
+
+```
+
+
+
+
+
+
+## Panel A: Outcome per time cited in policy
 ```{r}
 
 # Filter and select relevant columns
@@ -1907,7 +2025,7 @@ fig_S9a <- ggplot(outcome_trends,
   ) +
   labs(
      x = NULL,
-    y = "Number of reviews",
+    y = "Number of syntheses",
     title = "Cited in policy"
   ) +
   scale_x_continuous(
@@ -1927,6 +2045,7 @@ scale_y_continuous(
     panel.grid = element_blank()
     
   )
+
 
 fig_S9a
 ```
@@ -1974,7 +2093,7 @@ fig_S9b <- ggplot(outcome_trends,  # <- first argument = data
   ) +
   labs(
      x = NULL,
-    y = "Number of reviews",
+    y = "Number of syntheses",
     title = "Not cited in policy"
   ) +
    scale_x_continuous(
@@ -2043,7 +2162,7 @@ fig_S9c <- ggplot(noise_trends,
   ) +
    labs(
      x = NULL,
-    y = "Number of reviews",
+    y = "Number of syntheses",
     title = "Cited in policy"
   ) +
    scale_x_continuous(
@@ -2109,7 +2228,7 @@ fig_S9d <- ggplot(noise_trends, aes(
   ) +
    labs(
      x = NULL,
-    y = "Number of reviews",
+    y = "Number of syntheses",
     title = "Not cited in policy"
   ) +
 scale_x_continuous(
@@ -2174,7 +2293,7 @@ fig_S9e <-ggplot(ecosystem_trends, aes(
   ) +
   labs(
      x = NULL,
-    y = "Number of reviews",
+    y = "Number of syntheses",
     title = "Cited in policy"
   ) +
   scale_x_continuous(
@@ -2243,7 +2362,7 @@ fig_S9f <-ggplot(ecosystem_trends, aes(
   ) +
   labs(
      x = NULL,
-    y = "Number of reviews",
+    y = "Number of syntheses",
     title = "Not cited in policy"
   ) +
 scale_x_continuous(
@@ -2304,8 +2423,8 @@ figureS9 <- figS91 / figS92 / figS93 +
     
 # Save
 figureS9
-#ggsave(here("Figures/raw", "Figure_S9_trends.pdf"), width = 20, height = 18, dpi = 300)
-#ggsave(here("Figures/raw", "Figure_S9_trends.png"), width = 20, height = 18, dpi = 300)
+ggsave(here("Figures/raw", "Figure_S9_trends.pdf"), width = 20, height = 18, dpi = 300)
+ggsave(here("Figures/raw", "Figure_S9_trends.png"), width = 20, height = 18, dpi = 300)
 
 ```
 
@@ -2315,7 +2434,7 @@ figureS9
 #¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
 # Figure S10 - CEESAT scores cited and not cited in policy
 
-## Panel A: CEESAT scores (reviews cited in policy):
+## Panel A: CEESAT scores (syntheses cited in policy):
 
 ```{r}
 # 1. Labels
@@ -2405,8 +2524,6 @@ figS10_a
 figS10_b
 
 ```
-
-
 ## Patchwork- Figure S10 CEESAT
 ```{r}
 
@@ -2487,443 +2604,10 @@ versions_df <- data.frame(
   stringsAsFactors = FALSE
 )
 
-write.csv(versions_df, "Rpackages_versions.csv", row.names = FALSE)
+#write.csv(versions_df, "Rpackages_versions.csv", row.names = FALSE)
 
-message("CSV file created: Rpackages_versions.csv")
-
-```
-
-
-#¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
-## OUTTAKES
-
-
-### F1PA-bars and percentages???:
-
-```{r}
-
-# data <- read_csv("map.csv")  # Replace with your file path
-
-# Count outcomes per study (split comma-separated values)
-outcomes_per_study <- map %>%
-  select(study_id, outcome_category) %>%
-  mutate(
-    n_outcomes = str_count(outcome_category, ",") + 1,  # Count commas and add 1
-    n_outcomes = if_else(is.na(outcome_category), 0, n_outcomes)  # Handle NAs
-  )
-
-
-# Average number of outcomes per study
-avg_outcomes <- mean(outcomes_per_study$n_outcomes)
-print(paste("Average outcomes per study:", round(avg_outcomes, 2)))
-
-# Distribution of outcome counts
-outcome_distribution <- outcomes_per_study %>%
-  count(n_outcomes, name = "n_studies") %>%
-  mutate(percent = (n_studies / 50) * 100)
-
-print(outcome_distribution)
-
-# Plotting the distribution of outcomes per study
-fig_a3 <- ggplot(outcome_distribution, aes(x = factor(n_outcomes), y = n_studies)) +
-  geom_bar(stat = "identity", fill = "steelblue", width = 0.7) +
-  geom_text(
-    aes(label = sprintf("%d (%.1f%%)", n_studies, percent)),
-    vjust = -0.5, 
-    size = 4
-  ) +
-  labs(
-    title = "Number of Outcomes per Study (n=50)",
-    subtitle = paste("Average:", round(avg_outcomes, 2), "outcomes per study"),
-    x = "Number of Outcomes per Study",
-    y = "Number of Studies"
-  ) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
-
-fig_a3
+#message("CSV file created: Rpackages_versions.csv")
 
 ```
 
 
-
-### F1PD: Quantitative and qualitative studies—we are not pairing this with upset...
-
-```{r}
-# Count studies by quantitative category
-quant_counts <- map %>%
-  filter(!is.na(quantitative)) %>%
-  mutate(
-    quant_type = case_when(
-      tolower(quantitative) == "yes" ~ "Quantitative",
-      tolower(quantitative) == "no"  ~ "Qualitative",
-      TRUE ~ "Other"
-    )
-  ) %>%
-  count(quant_type, name = "n") %>%
-  mutate(percent = n / sum(n) * 100)
-
-print(quant_counts)
-
-# Bar plot with count and percentage labels
-fig1_d3 <- ggplot(quant_counts, aes(x = quant_type, y = n, fill = quant_type)) +
-  geom_col(width = 0.7, show.legend = FALSE) +
-  geom_text(
-    aes(label = sprintf("%d (%.1f%%)", n, percent)),
-    vjust = -0.5,
-    size = 4,
-    fontface = "bold"
-  ) +
-  labs(
-    title = "Number of Quantitative vs Qualitative Studies",
-    x = "Study Type",
-    y = "Number of Studies"
-  ) +
-  scale_fill_viridis_d(option = "D") +
-  theme_minimal(base_size = 13) +
-  theme(
-    plot.title = element_text(hjust = 0.5, face = "bold"),
-    axis.text = element_text(size = 12),
-    axis.title = element_text(size = 13)
-  )
-
-fig1_d3
-
-```
-
-
-```{r}
-# expand semicolon-separated taxa into rows ----
-taxon_long <- map %>%
-  separate_rows(scope_taxon, sep = ",\\s*") # split comma‐lists
-
-# unique(taxon_long$scope_taxon) # check unique taxonomic scopes)
-
-# simple (unweighted) counts per taxonomic_scope × taxon ----
-taxon_sum <- as.data.frame(table(taxon_long$scope_taxon))
-colnames(taxon_sum) <- c("scope_taxon", "count")
-
-# prepare weighted counts so multi-taxon studies are not over-counted ----
-taxon_weighted <- map %>%
-  mutate(n_taxon = str_count(scope_taxon, ",") + 1) %>% # number of taxa in that row
-  separate_rows(scope_taxon, sep = ",") %>% # expand to long format
-  mutate(weight = 1 / n_taxon) # equally split weight across taxa
-
-# aggregate weighted counts ----
-taxon_sum_weighted <- taxon_weighted %>%
-  group_by(scope_taxon) %>%
-  summarise(weighted_count = sum(weight), .groups = "drop")
-
-# weighted counts ----
-# weighted_count down-weights studies that list multiple taxa, avoiding double-counting
-fig2_b2 <- ggplot(
-  taxon_sum_weighted,
-  aes(
-    area = weighted_count,  # area reflects weighted counts
-    # fill = taxonomic_scope,  # colour by scope
-    # subgroup = taxonomic_scope, # draw subgroup borders
-    label = scope_taxon # label each tile with the taxon
-  )
-) +
-  geom_treemap() +
-  # geom_treemap_subgroup_border(color = "white", size = 1) +
-  # geom_treemap_subgroup_text(
-  #   fontface = "bold",
-  #   colour = "#363636",
-  #   place = "center",
-  #   grow = FALSE
-  # ) +
-  geom_treemap_text(
-    aes(label = scope_taxon, ),
-    fontface = "bold",
-    colour = "#FFFFF0",
-    place = "bottomleft",
-    grow = FALSE,
-    reflow = TRUE
-  ) +
-  scale_fill_paletteer_d("rcartocolor::TealRose") +
-  labs(title = "Taxonomic scope and taxon (Weighted by unique studies)") +
-  theme_minimal() +
-  theme(
-    legend.position = "bottom",
-    legend.title = element_text(size = 10),
-    legend.text = element_text(size = 9)
-  )
-
-fig2_b2
-
-# raw counts ----
-# p_taxon_raw <- ggplot(
-#   taxon_sum,
-#   aes(
-#     area = count, # area reflects raw counts
-#     fill = taxonomic_scope,
-#     subgroup = taxonomic_scope,
-#     label = taxon
-#   )
-# ) +
-#   geom_treemap() +
-#   geom_treemap_subgroup_border(color = "white", size = 1) +
-#   geom_treemap_subgroup_text(
-#     fontface = "bold",
-#     colour = "#363636",
-#     place = "center",
-#     grow = FALSE
-#   ) +
-#   geom_treemap_text(
-#     aes(label = taxon),
-#     fontface = "bold",
-#     colour = "#FFFFF0",
-#     place = "bottomleft",
-#     grow = FALSE,
-#     reflow = TRUE
-#   ) +
-#   scale_fill_paletteer_d("rcartocolor::TealRose") +
-#   labs(title = "Taxonomic Scope and taxon") +
-#   theme_minimal() +
-#   theme(
-#     legend.position = "bottom",
-#     legend.title = element_text(size = 10),
-#     legend.text = element_text(size = 9)
-#   )
-```
-
-#### B2 - Labelled with weighted counts
-
-```{r}
-# 2. Split scope_taxon by comma, clean up whitespace/casing, and keep study_id
-taxon_long2 <- map %>%
-  separate_rows(scope_taxon, sep = ",") %>%
-  mutate(scope_taxon = str_trim(scope_taxon),
-         scope_taxon = str_to_title(scope_taxon)) # e.g., "fish" -> "Fish"
-
-# 3. Calculate n_taxon per study row (after cleaning)
-taxon_long2 <- taxon_long2 %>%
-  group_by(study_id) %>%
-  mutate(n_taxon = n()) %>%
-  ungroup()
-
-# 4. Weighted count: Each study's "vote" split among its taxa
-taxon_long2 <- taxon_long2 %>%
-  mutate(weight = 1 / n_taxon)
-
-taxon_sum_weighted2 <- taxon_long2 %>%
-  group_by(scope_taxon) %>%
-  summarise(weighted_count = sum(weight), raw_count = n_distinct(study_id), .groups = "drop")
-
-# 5. Only keep taxa present in at least one study
-taxon_sum_weighted2 <- taxon_sum_weighted2 %>% filter(weighted_count > 0)
-
-# 6. Add vertebrate/invertebrate group
-vertebrates <- c("Aves", "Mammalia", "Reptilia", "Fish", "Amphibia")
-
-taxon_sum_weighted2 <- taxon_sum_weighted2 %>%
-  mutate(group = if_else(scope_taxon %in% vertebrates, "Vertebrate", "Invertebrate"),
-         label = paste0(scope_taxon, "\n(", round(weighted_count), ")"))
-
-# 7. Plot
-fig2_b3 <- ggplot(taxon_sum_weighted2, aes(area = weighted_count, fill = group, label = label)) +
-  geom_treemap() +
-  geom_treemap_text(fontface = "bold", colour = "#FFFFF0", place = "bottomleft", grow = FALSE, reflow = TRUE) +
-  scale_fill_manual(values = c("Vertebrate" = "#3399CC", "Invertebrate" = "#CC6633")) +
-  labs(title = "Taxonomic scope and taxon (Weighted by unique studies)") +
-  theme_minimal() +
-  theme(legend.position = "bottom", legend.title = element_blank())
-
-fig2_b3
-```
-
-
-### B2 - Labelled with unweighted counts
-
-```{r}
-# Load and clean
-# taxon <- read_csv("map.csv")
-taxon_long3 <- map %>%
-  separate_rows(scope_taxon, sep = ",") %>%
-  mutate(
-    scope_taxon = str_trim(scope_taxon),
-    scope_taxon = str_to_title(scope_taxon)
-  )
-
-# Unweighted counts: number of unique studies mentioning each taxon
-taxon_counts2 <- taxon_long3 %>%
-  group_by(scope_taxon) %>%
-  summarise(mentions = n_distinct(study_id), .groups = "drop") %>%
-  filter(mentions > 0)
-
-# # Add vertebrate/invertebrate group for color
-# vertebrates <- c("Aves", "Mammalia", "Reptilia", "Fish", "Amphibia")
-
-taxon_counts2 <- taxon_counts2 %>%
-  mutate(
-    group = if_else(scope_taxon %in% vertebrates, "Vertebrate", "Invertebrate"),
-    label = paste0(scope_taxon, "\n(", mentions, ")") # Mentions in parentheses
-  )
-
-# Plot
-fig2_b4 <-  ggplot(taxon_counts2, aes(area = mentions, fill = group, label = label)) +
-  geom_treemap() +
-  geom_treemap_text(
-    fontface = "bold",
-    colour = "#FFFFF0",
-    place = "bottomleft",
-    grow = FALSE,
-    reflow = TRUE
-  ) +
-  scale_fill_manual(
-    values = c("Vertebrate" = "#3399CC", "Invertebrate" = "#CC6633")
-  ) +
-  labs(title = "Taxonomic scope and taxon (Number of study mentions)") +
-  theme_minimal() +
-  theme(
-    legend.position = "bottom",
-    legend.title = element_blank()
-  )
-
-fig2_b4
-
-```
-
-```{r}
-polc <- read_csv(here("Data", "policy.csv"))
-
-polc <- polc %>%
-  mutate(policy_country = case_when(
-    policy_country %in% c("Northern Ireland", "Scotland") ~ "United Kingdom",
-    TRUE ~ policy_country
-  ))
-
-# Count policies per country/group
-policy_counts <- polc %>%
-  count(policy_country, name = "n")
-
-figS6a <- ggplot(policy_counts, aes(x = n, y = reorder(policy_country, n))) +
-  geom_col(width = 0.7, position = position_stack()) +
-  scale_fill_paletteer_d(
-  "ggthemes::Purple_Pink_Gray",
-  name = "policy countries",
-  guide = guide_legend(
-    override.aes = list(
-      shape = 21,
-      size = 4,
-      color = NA
-    ))
-  ) +
-  labs(
-    x = "Number of policies",
-    y = "Country counts",
-    #title = "Policies by Country (including International & EU)"
-  )+
-  theme_minimal(base_size = 13) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "inside",
-    legend.position.inside = c(.15, .65),
-    legend.text = element_text(size = 9),
-    legend.title = element_blank(),
-    panel.grid = element_blank()
-    )
-   
-    
-library(packcircles)
-library(ggforce)
-
-# Compute circle packing
-packing <- circleProgressiveLayout(policy_counts$n, sizetype='area')
-
-# Add positions back to dataframe
-policy_counts <- cbind(policy_counts, packing)
-
-# Get circle vertices for plotting
-dat.gg <- circleLayoutVertices(packing, npoints=50)
-
-# Plot packed bubbles
-ggplot() +
-  geom_polygon(data = dat.gg, 
-               aes(x, y, group = id, 
-                   fill = as.factor(id)), 
-               alpha = 0.7) +
-  geom_text(
-    data = policy_counts, 
-    aes(x, y, label = policy_country), 
-    size = 3, color = "white") +
-  scale_fill_paletteer_d("Polychrome::palette36", name = "Country") +
-  theme_void() +
-  theme(legend.position="none") +
-  labs(title = "Policies by Country (Packed Bubble Chart)")
-```
-## Figure S3: Author's keywords
-```{r}
-# 1. Load your Scopus CSV
-scopus<- read_csv(here("Data", "bibliometric.csv"))
-colnames(scopus)
-
-#Cleaning keywords with janitor package
-keywords <- scopus %>%
-  select(author_keywords, index_keywords) %>%
-  pivot_longer(cols = everything(), names_to = "source", values_to = "keyword") %>%
-  mutate(keyword = str_trim(tolower(keyword))) %>%   # clean text
-  filter(!is.na(keyword) & keyword != "") %>%        # remove empties
-  distinct(keyword)                        
-
-keywords
-
-
-# Clean and count keywords
-keywords_freq <- scopus %>%
-  select(author_keywords, index_keywords) %>%
-  pivot_longer(cols = everything(), names_to = "source", values_to = "keyword") %>%
-  mutate(keyword = str_split(keyword, ";")) %>%       # split by ";" 
-  unnest(keyword) %>%                                # expand rows
-  mutate(
-    keyword = str_trim(tolower(keyword)),            # clean spaces + lowercase
-    keyword = lemmatize_words(keyword)               # singularize/plural handling
-  ) %>%
-  filter(!is.na(keyword) & keyword != "") %>%        # drop empties
-  count(keyword, sort = TRUE) 
-
-keywords_freq
-
-# palette
-# Extract a palette as a vector of hex colors
-pal <- paletteer::paletteer_d("ggthemes::Purple_Pink_Gray")
-
-# Convert to character (paletteer objects are special class)
-pal <- as.character(pal)
-
-# Word map
-fig_S3 <- wordcloud2(keywords_freq, 
-                      size = 1, 
-                      color = pal, 
-                      backgroundColor = "white",
-                      shape = "circle"
-)
-
-
-
-
-
-# Special "NOISE"-shaped word cloud
-#letterCloud(
-  #keywords_freq,
-  #word = "NOISE",
-  #color = "pink",
-  #backgroundColor = "black",
-  #size = 2,        # enlarge
-  #gridSize = 10    # smaller grid = more words fit
-#)
-
-
-# Frequency table with janitor
-#keywords %>%
-  #tabyl(keyword) %>%
-  #arrange(desc(n))
-
-# Export
-
-#Save
-fig_S3
-
-#webshot("tmp.html","fig_S3.pdf", delay =5, vwidth = 480, vheight=480)
-
-```
