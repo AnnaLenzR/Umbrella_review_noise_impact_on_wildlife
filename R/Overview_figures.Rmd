@@ -108,8 +108,8 @@ fig1_A <- ggplot(quant_counts, aes(x = year, y = paper_count, fill = quant)) +
     axis.text.x = element_text(angle = 45, hjust = 1),
     legend.position = "inside",
     legend.position.inside = c(.15, .85),
-    # axis.text.x = element_text(size = 13),
-    # axis.title.y = element_text(size = 12),
+    #axis.text.x = element_text(size = 13),
+    #axis.title.y = element_text(size = 12),
     panel.grid = element_blank(),
     # plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
   )
@@ -373,19 +373,20 @@ fig1_D
 
 ```
 
-## Patchwork plots- Figure 1
+## Patchwork plots- Figure 1—assemble thefull figure
 ```{r}
-
+# Add labels to eacg figure
 fig1_A <- fig1_A + labs(tag = "A")
 fig1_B <- fig1_B + labs(tag = "B")
 fig1_C <- fig1_C + labs(tag = "C")
 fig1_D <- fig1_D + labs(tag = "D")
 
+# Assemble the final figure
 fig1 <- fig1_A / fig1_B / fig1_C / fig1_D +
   plot_layout(ncol = 1) &
   theme(plot.tag = element_text(size = 14, face = "bold"))
 
-# Save plot
+# Save figure with all panels
 fig1
 #ggsave(here("Figures/raw", "figure_1.pdf"), width = 11, height = 17, dpi = 300)
 #ggsave(here("Figures/raw", "figure_1.png"), width = 11, height = 17, dpi = 300)
@@ -396,10 +397,8 @@ fig1
 # Figure 2: Taxonomic groups
 
 ## Panel A: Taxonomic distribution TREEMAP
-
 ```{r}
-
-# 1. Split and clean taxa
+# Split and clean taxa
 taxon_long4 <- map %>%
   separate_rows(scope_taxon, sep = ",") %>%
   mutate(
@@ -407,13 +406,13 @@ taxon_long4 <- map %>%
     scope_taxon = str_to_title(scope_taxon)
   )
 
-# 2. Get unique study counts per taxon (no double-counting)
+# Get unique study counts per taxon (no double-counting)
 taxon_counts3 <- taxon_long4 %>%
   distinct(study_id, scope_taxon) %>%
   group_by(scope_taxon) %>%
   summarise(mentions = n(), .groups = "drop")
 
-# 3. Assign group and subgroup
+# Assign group and subgroup
  vertebrates <- c("Aves", "Mammalia", "Reptilia", "Fish", "Amphibia")
 
 taxon_counts3 <- taxon_counts3 %>%
@@ -423,14 +422,15 @@ taxon_counts3 <- taxon_counts3 %>%
   ) %>%
   filter(mentions > 0)
 
-# 4. Assign pastel green and pastel purple gradients
+# Assign pastel green and pastel purple gradients
 vertebrate_subgroups <- vertebrates
 invertebrate_subgroups <- setdiff(unique(taxon_counts3$subgroup), vertebrates)
 
-# Pastel green for vertebrates pastel purple for invertebrates
+# Assign colours for each group: pastel green for vertebrates pastel purple for invertebrates
 pal_vertebrate <- scales::colour_ramp(c("#BBA0CA", "#600047"))(seq(0,1,length.out=length(vertebrate_subgroups)))
 pal_invertebrate <- scales::colour_ramp(c("#B1B695", "#53917E"))(seq(0,1,length.out=length(invertebrate_subgroups)))
 
+# Count data
 taxon_counts3 <- taxon_counts3 %>%
   mutate(
     fill_color = case_when(
@@ -440,20 +440,16 @@ taxon_counts3 <- taxon_counts3 %>%
     label = paste0(scope_taxon, "\n(", mentions, ")")
   )
 
-# 5. Plot treemap (no subgroup label, just colored borders)
+# Plot treemap (no subgroup label, just colored borders)
 fig2 <- ggplot(taxon_counts3, aes(area = mentions, fill = fill_color, label = label, subgroup = group)) +
   geom_treemap(color = "white", size = 1.8) +
   geom_treemap_subgroup_border(color = "white", size = 3) +   # Group borders only!
-  # No geom_treemap_subgroup_text()  # <--- This removes the big faded group labels
+  # No geom_treemap_subgroup_text()  # <--- This removes the big faded group labels—for refining in vector editor software
   geom_treemap_text(
     fontface = "bold", colour = "White",
     place = "bottomleft", grow = FALSE, reflow = TRUE, min.size = 6
   ) +
   scale_fill_identity() +
-  #labs(
-   # title = "Taxonomic scope of included studies",
-   # subtitle = "Area and label = number of unique studies mentioning each taxon"
-  #) +
   theme(
     plot.title = element_text(face = "bold", size = 20, hjust = 0.5),
     plot.subtitle = element_text(size = 13, hjust = 0.5),
@@ -462,9 +458,10 @@ fig2 <- ggplot(taxon_counts3, aes(area = mentions, fill = fill_color, label = la
     plot.background = element_rect(fill = "white", colour = NA)
   )
 
+# Show figure
 fig2
 
-#save Figure 3
+# Save Figure
 #ggsave(here("Figures/raw", "Figure_2_taxa.pdf"), width = 14, height = 10, dpi= 300)
 #ggsave(here("Figures/raw", "Figure_2_taxa.png"), width = 14, height = 10, dpi = 300)
 
@@ -480,8 +477,7 @@ fig2
 ## Panel A: Outcome per time 
 
 ```{r}
-# 1. Process outcomes
-
+# Process outcomes
 outcome_trends <- map %>%
   filter(!is.na(outcome_category)) %>%
   separate_rows(outcome_category, sep = ",\\s*") %>%
@@ -491,9 +487,9 @@ outcome_trends <- map %>%
   count(year, outcome_category, name = "n")
 
 
-# 2: Plot (horizontal stacked bar with legend circles)
+# Plot (horizontal stacked bar with legend circles)
 fig3_a <- ggplot(outcome_trends, aes(
-  x    = year, #factor(year, levels = sort(unique(year))),
+  x    = year, 
   y    = n,
   fill = outcome_category
 )) +
@@ -533,6 +529,7 @@ fig3_a <- ggplot(outcome_trends, aes(
     
   )
 
+#Show plot
 fig3_a
 ```
 
@@ -540,8 +537,7 @@ fig3_a
 ## Panel B: Noise source
 
 ```{r}
-
-# 1. Prepare data
+# Prepare data
 noise_trends <- map %>%
   filter(!is.na(noise_source)) %>%
   separate_rows(noise_source, sep = ",") %>%
@@ -550,7 +546,7 @@ noise_trends <- map %>%
   distinct(study_id, year, noise_source) %>%
   count(year, noise_source, name = "count")
 
-# Step 2: Plot
+# Plot (horizontal stacked bar graoph with legend)
 fig3_b <- ggplot(noise_trends, aes(
   x    = year, 
   y    = count,
@@ -592,6 +588,7 @@ fig3_b <- ggplot(noise_trends, aes(
     
   )
 
+# Show pot
 fig3_b
 ```
 
@@ -600,7 +597,7 @@ fig3_b
 
 ```{r}
 
-# 1: Prepare data
+# Prepare data
 ecosystem_trends <- map %>%
   filter(!is.na(ecosystem_type)) %>%
   separate_rows(ecosystem_type, sep = "[,;]") %>%
@@ -610,7 +607,7 @@ ecosystem_trends <- map %>%
   count(year, ecosystem_type, name = "count")
 
 
-# 2. Plot
+# Plot bargraph
 fig3_c <-ggplot(ecosystem_trends, aes(
   x    = year,
   y    = count,
@@ -652,16 +649,21 @@ fig3_c <-ggplot(ecosystem_trends, aes(
     
   )
 
-
+# Show plot
 fig3_c
 
 ```
-## Patchwork plots-Figure 3
-```{r}
 
+## Patchwork plots-Figure 3
+
+```{r}
+# We assembled the panels to create the final figure
 fig3 <- fig3_a + fig3_b + fig3_c + plot_layout(nrow = 3) + plot_annotation(tag_levels = "A")
 
+# Show figure
 fig3
+
+# Save figure
 #ggsave(here("Figures/raw", "Figure_3_trends.pdf"), width = 11, height = 10, dpi = 300)
 #ggsave(here("Figures/raw", "Figure_3_trends.png"), width = 11, height = 10, dpi = 300)
 
@@ -675,6 +677,7 @@ fig3
 
 ## Panel A: World map with authors' affiliations
 ```{r}
+
 # Load world shapefile
 world <- ne_countries(scale = "medium", returnclass = "sf")
 
@@ -755,6 +758,7 @@ fig4_a
 #ggsave(here("Figures/raw", "Figure_4_bibliomap.png"), width = 11, height = 10, dpi = 300)
 
 ```
+
 
 
 ## Panel B: Chord diagram of authors collaborations
@@ -1390,11 +1394,70 @@ fig_S4B <- wordcloud2(keyword.freq,
                       shape = "rectangle"
 )
 
+# Show image-take a screenshot or export as png
 fig_S4B
 ```
 
+#¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
+
+## Figure S5: Policy citation publication year of the REVIEW and the total policy citation
+```{r}
+# filter by policy cited or not
+pol_fil <- pol_ci %>% 
+  filter(policy_cited == "Yes")
+
+colnames(pol_fil)
+
+# 3. Create empty label column
+pol_cit <- pol_fil %>%
+  mutate(label = case_when(
+    study_id == "benitez_2010" ~ "Benítez-López et al., 2010",
+    study_id == "shannon_2016" ~ "Shannon et al., 2016",
+    TRUE ~ NA_character_
+  ))
+
+
+
+# 4. Make the citation scatterplot
+fig_S5 <- ggplot(pol_cit, aes(x = year, y = unique_policy_citations)) +
+  geom_jitter(size = 4.3, alpha = 0.25, color = "#8074A8FF", width = 0.3, height = 0) +
+  geom_point(data = subset(pol_cit, !is.na(label)), 
+             aes(x = year, y = unique_policy_citations), 
+             color = "#8074A8FF", size = 4.3) +
+  geom_label(data = subset(pol_cit, !is.na(label)), 
+             aes(label = label), 
+             hjust = -0.1, vjust = 0.4, size = 3.5,
+             fill = "white", color = "black"
+  ) +
+   labs(
+     x = NULL,
+    y = "Policy documents citing syntheses"#,
+  ) +
+  scale_x_continuous(breaks = seq(from = min(pol_cit$year), 
+                                  to = max(pol_cit$year), by = 1)
+                     )+
+  theme_minimal(base_size = 13) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "inside",
+    legend.position.inside = c(.15, .75),
+    legend.text = element_text(size = 9),
+    legend.title = element_blank(),
+    panel.grid = element_blank()
+    
+  )
+  
+ 
+ 
+# 5. Print plot
+fig_S5
+
+#Save
+#ggsave(here("Figures/raw", "Figure_S5_policyciting.pdf"), width = 10, height = 7, dpi = 300)
+#ggsave(here("Figures/raw", "Figure_S5_policyciting.png"), width = 10, height = 7, dpi = 300)
+```
 #¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
-# Figure S5: Policy trends
+
+# Figure S6: Policy trends
 
 ## Panel A: Policy topic trends
 
@@ -1409,7 +1472,7 @@ policytopic <- dat_policy %>%
   count(policy_year, policy_topic, name = "n")
 
 # Step 3: Plot (horizontal stacked bar with legend circles)
-figS5_a <- ggplot(policytopic, aes(
+figS6_a <- ggplot(policytopic, aes(
   x = policy_year,,
   y    = n,
   fill = policy_topic
@@ -1449,7 +1512,7 @@ figS5_a <- ggplot(policytopic, aes(
     panel.grid = element_blank()
     
   )
-figS5_a
+figS6_a
 
 ```
 
@@ -1469,7 +1532,7 @@ policy_eco <- dat_policy %>%
   count(policy_year, ecological_context, name = "n")
 
 # Step 3: Plot (horizontal stacked bar with legend circles)
-figS5_b <- ggplot(policy_eco, aes(
+figS6_b <- ggplot(policy_eco, aes(
   x    = policy_year,
   y    = n,
   fill = ecological_context
@@ -1510,7 +1573,7 @@ figS5_b <- ggplot(policy_eco, aes(
     
   )
 
-figS5_b
+figS6_b
 ```
 ## Panel C: Policy document type trends 
 
@@ -1527,7 +1590,7 @@ policytype <- dat_policy %>%
 
 
 # Step 3: Plot (horizontal stacked bar with legend circles)
-figS5_c <- ggplot(policytype, aes(
+figS6_c <- ggplot(policytype, aes(
   x    = policy_year,
   y    = n,
   fill = policy_document_type
@@ -1568,78 +1631,22 @@ figS5_c <- ggplot(policytype, aes(
     
   )
 
-figS5_c
+figS6_c
 ```
 
 ## Patchwork-Figure 6
 ```{r}
+# Combine the panels to create the figure
+figS6 <- figS6_a + figS6_b + figS6_c + plot_layout(nrow = 3) + plot_annotation(tag_levels = "A")
 
-figS5 <- figS5_a + figS5_b + figS5_c + plot_layout(nrow = 3) + plot_annotation(tag_levels = "A")
+#Show figure
+figS6
 
-figS5
-#ggsave(here("Figures/raw", "Figure_S5_trends.pdf"), width = 11, height = 12, dpi = 300)
-#ggsave(here("Figures/raw", "Figure_S5_trends.png"), width = 11, height = 12, dpi = 300)
+# Save figure
+#ggsave(here("Figures/raw", "Figure_S6_trends.pdf"), width = 11, height = 12, dpi = 300)
+#ggsave(here("Figures/raw", "Figure_S6_trends.png"), width = 11, height = 12, dpi = 300)
 
 ```
-
-#¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
-
-## Figure S6: Policy citation publication year of the REVIEW and the total policy citation
-```{r}
-# filter by policy cited or not
-pol_fil <- pol_ci %>% 
-  filter(policy_cited == "Yes")
-
-colnames(pol_fil)
-
-# 3. Create empty label column
-pol_cit <- pol_fil %>%
-  mutate(label = case_when(
-    study_id == "benitez_2010" ~ "Benítez-López et al., 2010",
-    study_id == "shannon_2016" ~ "Shannon et al., 2016",
-    TRUE ~ NA_character_
-  ))
-
-
-
-# 4. Make the citation scatterplot
-fig_S6 <- ggplot(pol_cit, aes(x = year, y = unique_policy_citations)) +
-  geom_jitter(size = 4.3, alpha = 0.25, color = "#8074A8FF", width = 0.3, height = 0) +
-  geom_point(data = subset(pol_cit, !is.na(label)), 
-             aes(x = year, y = unique_policy_citations), 
-             color = "#8074A8FF", size = 4.3) +
-  geom_label(data = subset(pol_cit, !is.na(label)), 
-             aes(label = label), 
-             hjust = -0.1, vjust = 0.4, size = 3.5,
-             fill = "white", color = "black"
-  ) +
-   labs(
-     x = NULL,
-    y = "Policy documents citing syntheses"#,
-  ) +
-  scale_x_continuous(breaks = seq(from = min(pol_cit$year), 
-                                  to = max(pol_cit$year), by = 1)
-                     )+
-  theme_minimal(base_size = 13) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "inside",
-    legend.position.inside = c(.15, .75),
-    legend.text = element_text(size = 9),
-    legend.title = element_blank(),
-    panel.grid = element_blank()
-    
-  )
-  
- 
- 
-# 5. Print plot
-fig_S6
-
-#Save
-#ggsave(here("Figures/raw", "Figure_S6_policyciting.pdf"), width = 10, height = 7, dpi = 300)
-#ggsave(here("Figures/raw", "Figure_S6_policyciting.png"), width = 10, height = 7, dpi = 300)
-```
-
 
 #¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
 
@@ -1787,8 +1794,10 @@ fig_S8a <- ggplot(data = map_data) +
     barheight = 0.5
   ))
 
-
+# Show figure
 fig_S8a
+
+# Save
 #ggsave(here("Figures/raw", "Figure_S8a_map_policy_countries.pdf"), width = 16, height = 14)
 #ggsave(here("Figures/raw", "Figure_S8a_map_policy_countries.png"), width = 16, height = 14, dpi = 300)
 ```
@@ -1842,16 +1851,31 @@ fig_S8b <- ggplot(policy_country_top10,
   )+
   coord_flip()
 
-
+# Show figure
 fig_S8b
+
+# Save figure
 #ggsave(here("Figures/raw", "Figure_S8b_toppol_countries.pdf"), width = 11, height = 8, dpi= 300)
 #ggsave(here("Figures/raw", "Figure_S8b_toppol_countries.png"), width = 11, height = 8, dpi = 300)
 ```
 
+## Patchwork - Figure S8
+```{r}
+# Combine panels
+fig_S8 <- fig_S8a + fig_S8b + plot_layout(nrow = 2) + plot_annotation(tag_levels = "A")
+
+# Show figure
+fig_S8
+
+# Save figure
+#ggsave(here("Figures/raw", "Figure_S8_geographical_dist_policy.pdf"), width = 11, height = 8, dpi= 300)
+#ggsave(here("Figures/raw", "Figure_S8_geographical_dist_policy.png"), width = 11, height = 8, dpi = 300)
+```
+
 
 #¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
-# Figure S9: Annual trends cited and not cited in policy
 
+# Figure S9: Annual trends cited and not cited in policy: Panel A, B and C: Syntheses cited and not cited in policy - stacked bar plots
 ```{r}
 # Tidy data
 tidy_trends <- map %>%
@@ -1865,13 +1889,13 @@ tidy_trends <- map %>%
   separate_rows(category_value, sep = "[,;]\\s*") %>%
   mutate(category_value = str_trim(category_value)) %>%
   
-  # --- NEW: Filter out "NA" values as requested ---
+# Filter out "NA" values as requested
   filter(category_value != "NA") %>%
-  
+ # Selecting columns to plot
   group_by(year, cited_policy, category_group, category_value) %>%
   summarise(n = n_distinct(study_id), .groups = "drop")
 
-# Plotting function
+# Creating a plotting function
 create_trend_plot <- function(df, legend_title, plot_title = NULL) {
   
   ggplot(df, aes(x = year, y = n, fill = category_value)) +
@@ -1881,7 +1905,7 @@ create_trend_plot <- function(df, legend_title, plot_title = NULL) {
     geom_text(
       aes(label = n),
       position = position_stack(vjust = 0.5),
-      size = 2.5,
+      size = 5,
       colour = "white",
       fontface = "bold"
     ) +
@@ -1903,533 +1927,119 @@ create_trend_plot <- function(df, legend_title, plot_title = NULL) {
     theme_minimal(base_size = 12) +
     theme(
       panel.grid = element_blank(),
-      axis.text.x = element_text(angle = 45, hjust = 1),
-      legend.title = element_text(face = "bold", size = 10),
-      legend.text = element_text(size = 9),
-      plot.title = element_text(face = "bold", size = 14, hjust = 0.5) # Larger title
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 16),
+      legend.title = element_blank (),
+      legend.text = element_text(size = 12),
+      plot.title = element_text(face = "bold", size = 16, hjust = 0.5), # Larger title
+      legend.position ="inside", legend.position.inside = c(.15, .65),
+      axis.title.y = element_text(size = 18),
+      axis.text.y = element_text(size = 18),
+      axis.title.x = element_text(size = 18)
     )
 }
 
 
 ```
 
-### Patchwork
+## Panel A: Outcome category
+
 ```{r}
-# --- STEP 3: CORRECTED FINAL ASSEMBLY ---
+# Create individual plots for each combination of category_group and cited_policy, adjust theme individually
 
-
+# Outcome category cited and not cited in policy
 p_A <- tidy_trends %>%
-  filter(category_group == "outcome_category", cited_policy == "yes") %>%
-  create_trend_plot(legend_title = "Outcome", plot_title = "Cited in Policy") +
-  theme(legend.position = "none")
-
-p_B <- tidy_trends %>%
   filter(category_group == "outcome_category", cited_policy == "no") %>%
   create_trend_plot(legend_title = "Outcome", plot_title = "Not Cited in Policy") +
-  theme(legend.position ="inside")
+  labs(tag = "A") +
+  theme (plot.tag = element_text(size = 20))
 
+
+p_B <- tidy_trends %>%
+  filter(category_group == "outcome_category", cited_policy == "yes") %>%
+  create_trend_plot(legend_title = "Outcome", plot_title = "Cited in Policy") +
+  theme(legend.position = "none",
+        axis.title.y = element_blank())
+
+# See plots
+p_A
+p_B
+
+```
+
+## Panel B: Noise source
+
+```{r}
+# Noise source cited and not cited in policy
 p_C <- tidy_trends %>%
-  filter(category_group == "noise_source", cited_policy == "yes") %>%
-  create_trend_plot(legend_title = "Noise Source") +
-  theme(legend.position = "none")
-
-p_D <- tidy_trends %>%
   filter(category_group == "noise_source", cited_policy == "no") %>%
   create_trend_plot(legend_title = "Noise Source") +
-  theme(legend.position ="inside")
+  labs(tag = "B") +
+  theme (plot.tag = element_text(size = 20))
 
+
+p_D <- tidy_trends %>%
+  filter(category_group == "noise_source", cited_policy == "yes") %>%
+  create_trend_plot(legend_title = "Noise Source") +
+   theme(legend.position = "none",
+        axis.title.y = element_blank())
+
+# See plots
+p_C
+p_D
+```
+
+## Panel C: Ecosystem type
+
+``` {r}
+# Ecosystem type cited and not cited in policy
 p_E <- tidy_trends %>%
-  filter(category_group == "ecosystem_type", cited_policy == "yes") %>%
-  create_trend_plot(legend_title = "Environment") +
-  theme(legend.position = "none")
+  filter(category_group == "ecosystem_type", cited_policy == "no") %>%
+  create_trend_plot(legend_title = "Environment")+
+  labs(tag = "C") +
+  theme(axis.title.x = element_text(size = 18),
+        plot.tag = element_text(size = 20))
+
 
 p_F <- tidy_trends %>%
-  filter(category_group == "ecosystem_type", cited_policy == "no") %>%
+  filter(category_group == "ecosystem_type", cited_policy == "yes") %>%
   create_trend_plot(legend_title = "Environment") +
-  theme(legend.position ="inside")
+  theme(legend.position = "none",
+        axis.title.y = element_blank(),
+        axis.title.x = element_text(size = 18))
 
-# --- ASSEMBLE THE FINAL FIGURE (REVISED LOGIC) ---
+# See plots 
+p_E
+p_F
 
-# Row 1: X-axis is now visible. Legend position is controlled here.
-row1 <- p_B + 
-        (p_A + theme(axis.title.y = element_blank())) +
-        plot_layout(guides = "collect") #& theme(legend.position = 'inside')
+```
 
-# Row 2: X-axis is now visible. Legend position is controlled here.
-row2 <- p_D + 
-        (p_C + theme(axis.title.y = element_blank())) +
-        plot_layout(guides = "collect") #& theme(legend.position = 'inside')
-        
-# Row 3: X-axis was always visible. Legend position is controlled here.
-row3 <- p_F + 
-        (p_E + theme(axis.title.y = element_blank())) +
-        plot_layout(guides = "collect") #& theme(legend.position = 'inside')
 
-# Combine the three rows vertically and add the A-F panel tags
-final_figure_corrected <- (row1 / row2 / row3) +
-  plot_annotation(tag_levels = 'A')
+## Patchwork Figure S9: Assemble the final figure
 
-# Display the corrected figure
-final_figure_corrected
+```{r}
+# Assembling sub-figures in pairs for better alignment
+
+figS9_a <- (p_A + p_B) +
+  plot_layout(ncol = 2) 
+  
+figS9_b <- (p_C + p_D) +
+  plot_layout(ncol = 2)
+
+figS9_c <- (p_E + p_F) +
+  plot_layout(ncol = 2)
+
+# Combining three rows for final figure
+  
+figS9 <- (figS9_a / figS9_b / figS9_c)
+
+# Show final figure
+figS9
 
 # To save the figure
-ggsave(here("Figures/raw", "Final_fig_trends.pdf"), width = 20, height = 18, dpi = 300)
-ggsave(here("Figures/raw", "Final_fig_trends.png"), width = 20, height = 18, dpi = 300)
+ggsave(here("Figures/raw", "FigureS9_trends_syntheses_cited_not_cited.pdf"), width = 18, height = 15, dpi = 300)
+ggsave(here("Figures/raw", "FigureS9_trends_syntheses_cited_not_cited.png"), width = 18, height = 15, dpi = 300)
 
 ```
-
-
-
-
-
-
-## Panel A: Outcome per time cited in policy
-```{r}
-
-# Filter and select relevant columns
-outcome_trends <- map %>%
-  filter(cited_policy == "yes") %>% # filter cited in policy
-  filter(!is.na(outcome_category)) %>%
-  separate_rows(outcome_category, sep = ",\\s*") %>%
-  mutate(outcome_category = str_trim(outcome_category)) %>%
-  filter(outcome_category != "") %>%
-  distinct(study_id, year, outcome_category, cited_policy) %>%
-  count(year, outcome_category, cited_policy, name = "n")
-
-
-# Step 3: Plot (horizontal stacked bar with legend circles)
-fig_S9a <- ggplot(outcome_trends,
-  aes(
-  x    = year, #factor(year, levels = sort(unique(year))),
-  y    = n,
-  fill = outcome_category
-)) +
-  geom_col(width = 0.7, position = position_stack()) +
-  geom_text(
-    aes(label = n),
-    position = position_stack(vjust = 0.5),
-    size = 3,
-    colour = "white",
-    fontface = "bold"
-  ) +
-  scale_fill_paletteer_d(
-  "ggthemes::Purple_Pink_Gray",
-  name = "Outcomes trends",
-  guide = guide_legend(
-    override.aes = list(
-      shape = 21,
-      size = 4,
-      color = NA
-    )
-  )
-  ) +
-  labs(
-     x = NULL,
-    y = "Number of syntheses",
-    title = "Cited in policy"
-  ) +
-  scale_x_continuous(
-  breaks = seq(2008, 2025, 1),
-  limits = c(2008,2025)
-  )+ 
-scale_y_continuous(
-  limits = c(0, 30),
-  breaks = seq(0, 30, 5)
-)+ 
-  theme_minimal(base_size = 13) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "inside",
-    legend.position.inside = c(.15, .65),
-    legend.text = element_text(size = 9),
-    legend.title = element_blank(),
-    panel.grid = element_blank()
-    
-  )
-
-
-fig_S9a
-```
-
-
-
-## Panel B: Outcometrends not cited in policy
-```{r}
-# Filter and select relevant columns
-outcome_trends <- map %>%
-  filter(cited_policy == "no") %>% # filter cited in policy
-  filter(!is.na(outcome_category)) %>%
-  separate_rows(outcome_category, sep = ",\\s*") %>%
-  mutate(outcome_category = str_trim(outcome_category)) %>%
-  filter(outcome_category != "") %>%
-  distinct(study_id, year, outcome_category) %>%
-  count(year, outcome_category, name = "n")
-
-
-# Step 3: Plot (horizontal stacked bar with legend circles)
-fig_S9b <- ggplot(outcome_trends,  # <- first argument = data
-  aes(
-    x    = year,
-    y    = n,
-    fill = outcome_category
-)) +
-  geom_col(width = 0.7, position = position_stack()) +
-  geom_text(
-    aes(label = n),
-    position = position_stack(vjust = 0.5),
-    size = 3,
-    colour = "white",
-    fontface = "bold"
-  ) +
-  scale_fill_paletteer_d(
-  "ggthemes::Purple_Pink_Gray",
-  name = "Outcomes trends",
-  guide = guide_legend(
-    override.aes = list(
-      shape = 21,
-      size = 4,
-      color = NA
-    )
-  )
-  ) +
-  labs(
-     x = NULL,
-    y = "Number of syntheses",
-    title = "Not cited in policy"
-  ) +
-   scale_x_continuous(
-  breaks = seq(2008, 2025, 1),
-  limits = c(2008,2025)
-  )+ 
-scale_y_continuous(
-  limits = c(0, 30),
-  breaks = seq(0, 30, 5)
-)+ 
-  theme_minimal(base_size = 13) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "inside",
-    legend.position.inside = c(.15, .65),
-    legend.text = element_text(size = 9),
-    legend.title = element_blank(),
-    panel.grid = element_blank()
-    
-  )
-
-fig_S9b
-
-```
-
-
-## Panel C: Noise source cited in policy
-
-```{r}
-# Step 1: Prepare data
-# Filter and select relevant columns
-noise_trends <- map %>%
-  filter(cited_policy == "yes") %>%
-  filter(!is.na(noise_source)) %>%
-  separate_rows(noise_source, sep = ",") %>%
-  mutate(noise_source = str_trim(noise_source)) %>%
-  filter(noise_source != "") %>%
-  distinct(study_id, year, noise_source) %>%
-  count(year, noise_source, name = "n")
-
-
-# Step 3: Plot
-fig_S9c <- ggplot(noise_trends, 
-  aes(
-  x    = year, #factor(year, levels = sort(unique(year))),
-  y    = n,
-  fill = noise_source
-)) +
-  geom_col(width = 0.7, position = position_stack()) +
-  geom_text(
-    aes(label = n),
-    position = position_stack(vjust = 0.5),
-    size = 3,
-    colour = "white",
-    fontface = "bold"
-  ) +
-  scale_fill_paletteer_d(
-  "ggthemes::Purple_Pink_Gray",
-  name = "Noise source",
-  guide = guide_legend(
-    override.aes = list(
-      shape = 21,
-      size = 4,
-      color = NA
-    )
-  )
-  ) +
-   labs(
-     x = NULL,
-    y = "Number of syntheses",
-    title = "Cited in policy"
-  ) +
-   scale_x_continuous(
-  breaks = seq(2008, 2025, 1),
-  limits = c(2008,2025)
-  )+ 
-scale_y_continuous(
-  limits = c(0, 30),
-  breaks = seq(0, 30, 5)
-)+ 
-  theme_minimal(base_size = 13) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "inside",
-    legend.position.inside = c(.15, .65),
-    legend.text = element_text(size = 9),
-    legend.title = element_blank(),
-    panel.grid = element_blank()
-    
-  )
-
-fig_S9c
-
-```
-
-## Panel D: Noise source not cited in policy
-
-```{r}
-# Load your data
-# Filter and select relevant columns
-noise_trends <- map %>%
-  filter(cited_policy == "no") %>%
-  filter(!is.na(noise_source)) %>%
-  separate_rows(noise_source, sep = ",") %>%
-  mutate(noise_source = str_trim(noise_source)) %>%
-  filter(noise_source != "") %>%
-  distinct(study_id, year, noise_source) %>%
-  count(year, noise_source, name = "n")
-
-# Plot
-fig_S9d <- ggplot(noise_trends, aes(
-  x    = year, #factor(year, levels = sort(unique(year))),
-  y    = n,
-  fill = noise_source
-)) +
-  geom_col(width = 0.7, position = position_stack()) +
-  geom_text(
-    aes(label = n),
-    position = position_stack(vjust = 0.5),
-    size = 3,
-    colour = "white",
-    fontface = "bold"
-  ) +
-  scale_fill_paletteer_d(
-  "ggthemes::Purple_Pink_Gray",
-  name = "Noise source",
-  guide = guide_legend(
-    override.aes = list(
-      shape = 21,
-      size = 4,
-      color = NA
-    )
-  )
-  ) +
-   labs(
-     x = NULL,
-    y = "Number of syntheses",
-    title = "Not cited in policy"
-  ) +
-scale_x_continuous(
-  breaks = seq(2008, 2025, 1),
-  limits = c(2008,2025)
-  )+ 
-scale_y_continuous(
-  limits = c(0, 30),
-  breaks = seq(0, 30, 5)
-)+ 
-  theme_minimal(base_size = 13) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "inside",
-    legend.position.inside = c(.15, .65),
-    legend.text = element_text(size = 9),
-    legend.title = element_blank(),
-    panel.grid = element_blank()
-    
-  )
-
-fig_S9d
-
-```
-
-## Panel E: Environment cited in policy
-
-```{r}
-# Prepare data
-ecosystem_trends <- map %>%
-  filter(cited_policy == "yes") %>%
-  filter(!is.na(ecosystem_type)) %>%
-  separate_rows(ecosystem_type, sep = "[,;]") %>%
-  mutate(ecosystem_type = str_trim(ecosystem_type)) %>%
-  filter(ecosystem_type != "") %>%
-  distinct(study_id, year, ecosystem_type) %>%
-  count(year, ecosystem_type, name = "n")
-
-# Step 3: Plot
-fig_S9e <-ggplot(ecosystem_trends, aes(
-  x    = year, #factor(year, levels = sort(unique(year))),
-  y    = n,
-  fill = ecosystem_type
-)) +
-  geom_col(width = 0.7, position = position_stack()) +
-  geom_text(
-    aes(label = n),
-    position = position_stack(vjust = 0.5),
-    size = 3,
-    colour = "white",
-    fontface = "bold"
-  ) +
-   scale_fill_paletteer_d(
-  "ggthemes::Purple_Pink_Gray",
-  name = "Environment trends",
-  guide = guide_legend(
-    override.aes = list(
-      shape = 21,
-      size = 4,
-      color = NA
-    )
-  )
-  ) +
-  labs(
-     x = NULL,
-    y = "Number of syntheses",
-    title = "Cited in policy"
-  ) +
-  scale_x_continuous(
-  breaks = seq(2008, 2025, 1),
-  limits = c(2008,2025)
-  )+ 
-scale_y_continuous(
-  limits = c(0, 30),
-  breaks = seq(0, 30, 5)
-)+  
-  
-  theme_minimal(base_size = 13) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "inside",
-    legend.position.inside = c(.15, .65),
-    legend.text = element_text(size = 9),
-    legend.title = element_blank(),
-    panel.grid = element_blank()
-    
-  )
-
-
-fig_S9e
-
-```
-
-
-## Panel F: Environment not cited in policy
-
-```{r}
-# Step 1: Prepare data
-ecosystem_trends <- map %>%
-  filter(cited_policy == "no") %>%
-  filter(!is.na(ecosystem_type)) %>%
-  separate_rows(ecosystem_type, sep = "[,;]") %>%
-  mutate(ecosystem_type = str_trim(ecosystem_type)) %>%
-  filter(ecosystem_type != "") %>%
-  distinct(study_id, year, ecosystem_type) %>%
-  count(year, ecosystem_type, name = "n")
-
-
-# Step 3: Plot
-fig_S9f <-ggplot(ecosystem_trends, aes(
-  x    = year,
-  y    = n,
-  fill = ecosystem_type
-)) +
-  geom_col(width = 0.7, position = position_stack()) +
-  geom_text(
-    aes(label = n),
-    position = position_stack(vjust = 0.5),
-    size = 3,
-    colour = "white",
-    fontface = "bold"
-  ) +
-   scale_fill_paletteer_d(
-  "ggthemes::Purple_Pink_Gray",
-  name = "Environment trends",
-  guide = guide_legend(
-    override.aes = list(
-      shape = 21,
-      size = 4,
-      color = NA
-    )
-  )
-  ) +
-  labs(
-     x = NULL,
-    y = "Number of syntheses",
-    title = "Not cited in policy"
-  ) +
-scale_x_continuous(
-  breaks = seq(2008, 2025, 1),
-  limits = c(2008,2025)
-  )+ 
-scale_y_continuous(
-  limits = c(0, 30),
-  breaks = seq(0, 30, 5)
-)+                   
-  theme_minimal(base_size = 13) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "inside",
-    legend.position.inside = c(.15, .65),
-    legend.text = element_text(size = 9),
-    legend.title = element_blank(),
-    panel.grid = element_blank()
-    
-  )
-
-
-fig_S9f
-```
-
-
-## Patchwork-Figure S9
-```{r}
-
-figS91 <- (fig_S9a + (fig_S9b + 
-                        theme(axis.title.y = element_blank())) + 
-  plot_layout(nrow = 1, guides = "collect")+
-  theme(legend.position = "left",
-  legend.position.inside = c(0.15, 0.65)))
-  
-  
-  
-figS92 <- (fig_S9c + (fig_S9d+ 
-                        theme(axis.title.y = element_blank())) + 
-  plot_layout(nrow = 1, guides = "collect")+
-  plot_annotation(tag_levels ="A")+
-  theme(legend.position = "left",
-        legend.position.inside = c(0.15, 0.65)))
-
-
-
-figS93 <- (fig_S9e + (fig_S9f+ 
-                        theme(axis.title.y = element_blank())) + 
-  plot_layout(nrow = 1, guides = "collect")+
-  plot_annotation(tag_levels ="A")+
-  theme(legend.position = "left",
-        legend.position.inside = c(0.15, 0.65)))
-
-
-figureS9 <- figS91 / figS92 / figS93 +  
-              plot_layout(nrow = 3) + #guides = "collect") + 
-              plot_annotation(tag_levels = "A") &
-               theme(legend.position = "right")
-    
-# Save
-figureS9
-ggsave(here("Figures/raw", "Figure_S9_trends.pdf"), width = 20, height = 18, dpi = 300)
-ggsave(here("Figures/raw", "Figure_S9_trends.png"), width = 20, height = 18, dpi = 300)
-
-```
-
-
-
 
 #¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
 # Figure S10 - CEESAT scores cited and not cited in policy
@@ -2524,9 +2134,11 @@ figS10_a
 figS10_b
 
 ```
-## Patchwork- Figure S10 CEESAT
-```{r}
 
+## Patchwork- Figure S10 CEESAT
+
+```{r}
+# Combine panels to create figure
 figS10 <- (figS10_a | figS10_b) +
   plot_annotation(
     tag_levels = 'A',
