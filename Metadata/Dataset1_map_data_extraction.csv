@@ -1,0 +1,60 @@
+Variable,Category/Formats,Definition
+extractor_initials,"AL, ML, etc.","Initials of the data extractor, first name and last name initials."
+study_id,"e.g., smith_2020",Unique ID of the review: firstauthor_year format
+doi,"e.g., 10.1093/beheco/ar","Digital Object Identifier (e.g., 10.1093/beheco/ar). Matched from journal metadata"
+year,YYYY,Year of publication extracted from journal metadata
+review_type,Systematic review,"Structured evidence synthesis using a search strategy (keywords + databases), predefined criteria to identify and analyze studies, which often answer a question or make a recommendation about what they are reviewing. "
+,Systematic map,"Provides a structured overview of existing evidence to identify research clusters, gaps, and trends without quantitative synthesis"
+,Meta-analysis,Statistical combination of effect sizes from multiple studies using statistical techniques to estimate overall trends and variation
+quantitative,yes/no,Yes the synthesis has any kind of quantitative approach
+ceesat,yes/no,Yes if the synthesis was assessed with CEESAT
+study_designs,Experimental,Includes manipulations with controlled conditions
+,Observational,Observes variables in natural settings without manipulation
+,Mixed,Includes both experimental and observational studies
+,Other,"Includes theory or modelling, not empirical studies"
+,Unclear,No information reported on study design
+n_studies,interger,The number of noise-primary studies synthesized. Most be explicitly stated
+ecosystem_type,Terrestrial,"Land-based ecosystems, excluding urban areas, but can include rural and natural area.s"
+[Multicategory allowed],Freshwater,"Lakes, rivers, wetlands, estuaries"
+,Marine,Saltwater environments like the ocean
+,Urban,"Human-dominated environments, cities, or industrial zones"
+,Other,"Ecosystems that don’t fit above (e.g., caves, polar)"
+,Unclear,Ecosystem type is not explicitly mentioned
+noise_frequencies,Infrasonic,Below 20 Hz
+,Audible,Between 20 Hz and 20 kHz
+,Ultrasonic,Above 20 kHz
+,Mixed,Covers more than one range
+,Other,Unclassified or ambiguous range
+,Unclear,Not specified in the review
+specific_noises,yes/no/unclear,"“Yes” for explicitly specified focus (e.g., sonar, aircraft, boat, road traffic)"
+noise_source,Transportation,"Traffic, car, aircraft, roadway, marine vessels (includes cruise ships, drillships, freight/passenger vessels), recreational boats"
+,Energy,"Air gun, Water gun, seismic survey, drilling, turbines, wind turbines, wind farm, gas compressor, hydroelectric turbines, energy infrastructure"
+,Construction,"Pile driving, dredging, construction, pier noise, road construction"
+,Industrial,"Mining, industry, industrial, compressor, generator"
+,Urban,Whole urban soundscape/background noise
+,Recreational,"Music, tourism, Fireworks, Human voices"
+,UAV/UAS,"Drones, Unmanned Aerial Vehicles (UAVs) or Unmanned Aircraft Systems (UASs)"
+,Synthetic,"White noise, brown noise, synthetic tones, linear sweeps, sine waves, and playback tones"
+,Military,"Missile launch, military sonar, sonic boom, military activity"
+,Unclear,Not specified
+scope_single_species,yes/no/unclear,"“Yes” for explicitly specified focus on a single species (e.g., polar bear)"
+scope_singlehigher_taxa,yes/no/unclear,"“Yes” for explicitly specified focus on a higher taxonomic group (e.g., birds, insects, marine mammals). Use “No” If review is on animals in general."
+scope_taxon [Multicategory allowed],"Latin names (e.g., Chordata, Arthropoda, Aves)","Use the high-level taxa of the included species, if specified, or derive from the list of species, if available."
+taxa_notes,text,Any observations about the taxonomic scope
+sp_source,yes/no/unclear,"“Yes,”  if explicitly mentioned that focus is on wild or free-living animals only. If not, code as  “No” "
+sp_source_category,Wild,Free-living animals in natural/semi-natural environments
+[Multicategory allowed],Domestic,"Pets, livestock, and working animals"
+,Laboratory,Animals bred for use in lab-controlled settings (e.g. rodent models for health research)
+,Mixed,Combination of multiple categories above
+,Other,"Captive but not domestic or laboratory (e.g., zoo animals)"
+,Unclear,Not clearly reported
+outcome_category,Behavioural,"Observable behaviours (e.g., vigilance, foraging)"
+[Multicategory allowed],Physiological,"Biological responses (e.g., hormones, immune system)"
+,Ecological,"Population- or community-level impacts (e.g. spatial distribution, abundance, occupancy)"
+,Reproductive,"Fertility, mating, or offspring effects"
+,Communication,Vocal/acoustic signalling changes (e.g. higher frequencies or temporal changes in calls)
+,Other,Does not fit any above
+,Unclear,Not enough information
+contextual_modifiers,yes/no/unclear,"Does the review assess how noise interacts with other factors? “Yes,” if explicitly stated that interactions are considered in the review (e.g., a meta-analysis has moderators for other variable types such as time of day, light, predators, animal sex, location or climate type). If not, code as “No.” "
+contextual_modifiers_name,Exact words/terms of the author in the review used to describe considered interactions or moderators,Name the additional potentially interacting factor considered in the review
+general_notes,free text,Any observations about the syntheses

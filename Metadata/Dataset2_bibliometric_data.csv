@@ -1,0 +1,26 @@
+Variable,Description,Format
+authors,"Abbreviated author initials and surnames separated by semicolons (e.g., “R., Williams, Rob; K.D., Cox, Kieran D.”).",Free text
+author_full_names,"Full names of all authors with unique Scopus Author IDs in parentheses, separated by semicolons.",Free text
+author_id,"List of Scopus Author IDs corresponding to each author, separated by semicolons.",Text / Numeric identifiers
+title,Full title of the publication.,Text
+year,Year the publication was released.,Integer (YYYY)
+cited_by,Number of citations the article has received (from Scopus).,Integer
+doi,Digital Object Identifier (DOI) for the article.,Text
+link,Direct Scopus URL to the publication record.,URL
+affiliations,"Institutional affiliations and countries of all authors, separated by semicolons.",Free text
+authors_with_affiliations,Combined field listing each author followed by their institutional affiliation and country.,Free text / structured
+abstract,Abstract text of the article summarizing the main findings.,Free text
+author_keywords,Author-supplied keywords (semicolon-separated).,Free text
+index_keywords,"Indexed keywords from Scopus (e.g., MeSH or subject tags).",Free text
+funding_text,Narrative funding acknowledgment text included in the article.,Free text
+funding,Binary field indicating whether funding is reported (“yes” or empty).,Yes/No
+references,List of references cited by the article (semicolon-separated).,Free text
+editors,Editor names; this column is empty for all records.,Empty / NA
+publisher,"Name of the publishing organization (e.g., Elsevier Ltd).",Text
+PubMed ID,Unique PubMed identifier when available; missing for non-indexed items.,Integer / NA
+language,Language of publication (all entries are “English”).,Text (single category)
+document_type,"Type of publication (e.g., Article, Review, Editorial)",Categorical
+publication_stage,"Stage of publication (e.g., Final, Pre-print)",Categorical
+open_access,Whether the paper is open access,Yes/No
+source,Name of the database,Scopus
+eid,Electronic identifier assigned by Scopus,Text

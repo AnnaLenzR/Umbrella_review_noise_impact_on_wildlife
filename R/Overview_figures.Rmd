@@ -94,7 +94,8 @@ fig1_A <- ggplot(quant_counts, aes(x = year, y = paper_count, fill = quant)) +
                     )+
   labs(
     x = NULL,
-    y = "Number of syntheses"#,
+    y = "Number of syntheses",
+    tag = "A"  # Add tag for Figure A here
   )+
   scale_y_continuous(
   limits = c(0, 12),
@@ -120,8 +121,6 @@ fig1_A
 ```
 
 ## Panel B: Environment average per paper
-
-### Simple barplot
 
 ```{r}
 # Average number of environment types per paper
@@ -161,10 +160,10 @@ dat_upset_env <- env |>
 fig1_B <- upset(
   dat_upset_env,
   intersect = colnames(dat_upset_env)[-1], 
-  name = "Ecosystem type",
+  name = "",
   base_annotations = list(
     "Intersection size" = intersection_size(
-       mapping = aes(fill = 'bars_color') 
+       mapping = aes(fill = 'bars_color')  
      ) + 
        annotate(
          geom = "text", x = Inf, y = Inf,
@@ -180,14 +179,16 @@ fig1_B <- upset(
   limits = c(0, 20),
   breaks = seq(0, 20, 4)
 )+ 
-       theme_minimal(base_size = 14) +
+  labs(tag = "B") +
+      theme_minimal(base_size = 14) +
       theme(
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
         panel.background = element_blank(),
         axis.title.x = element_blank(),   # remove x axis title
         axis.text.x  = element_blank(),   # remove x axis text
-        axis.ticks.x = element_blank() 
+        axis.ticks.x = element_blank(), 
+        axis.title.y = element_blank()
       )
   ),
   #Matrix dots
@@ -203,9 +204,9 @@ fig1_B <- upset(
 fig1_B
 
 ```
-## Panel C: Noise source average per paper
 
-### Simple barplot
+
+## Panel C: Noise source average per paper
 
 ```{r}
 # Average number of noise sources per paper
@@ -246,7 +247,7 @@ fig1_C <- upset(
   dat_upset_noise,
   intersect = colnames(dat_upset_noise)[-1]
    , 
-   name = "Noise source",
+   name = "",
    base_annotations = list(
      "Intersection size" = intersection_size(
        mapping = aes(fill = 'bars_color')#, 
@@ -265,6 +266,7 @@ fig1_C <- upset(
   limits = c(0, 8),
   breaks = seq(0, 8, 2)
 )+ 
+  labs(tag = "C") +
        theme_minimal(base_size = 14) +
       theme(
         panel.grid.major = element_blank(),
@@ -272,7 +274,8 @@ fig1_C <- upset(
         panel.background = element_blank(),
         axis.title.x = element_blank(),   # remove x axis title
         axis.text.x  = element_blank(),   # remove x axis text
-        axis.ticks.x = element_blank() 
+        axis.ticks.x = element_blank(),
+        axis.title.y = element_blank()
       )
   ),
   #Matrix dots
@@ -328,7 +331,7 @@ dat_upset_outcomes <- outcomes |>
 fig1_D <- upset(
   dat_upset_outcomes,
   intersect = colnames(dat_upset_outcomes)[-1], 
-  name = "Outcome categories",
+  name = "",
   
   #Bar annotation
   base_annotations = list(
@@ -349,6 +352,7 @@ fig1_D <- upset(
   limits = c(0, 10),
   breaks = seq(0, 10, 2)
 )+ 
+  labs(tag = "D") +
        theme_minimal(base_size = 14) +
       theme(
         panel.grid.major = element_blank(),
@@ -356,7 +360,8 @@ fig1_D <- upset(
         panel.background = element_blank(),
         axis.title.x = element_blank(),   # remove x axis title
         axis.text.x  = element_blank(),   # remove x axis text
-        axis.ticks.x = element_blank() 
+        axis.ticks.x = element_blank(),
+        axis.title.y = element_blank()
       )
   ),
   #Matrix dots
@@ -375,21 +380,27 @@ fig1_D
 
 ## Patchwork plots- Figure 1—assemble thefull figure
 ```{r}
-# Add labels to eacg figure
-fig1_A <- fig1_A + labs(tag = "A")
-fig1_B <- fig1_B + labs(tag = "B")
-fig1_C <- fig1_C + labs(tag = "C")
-fig1_D <- fig1_D + labs(tag = "D")
+# Create panel pairs for better layout
 
-# Assemble the final figure
-fig1 <- fig1_A / fig1_B / fig1_C / fig1_D +
-  plot_layout(ncol = 1) &
+fig1_AB <- (fig1_A | fig1_B) +
+  plot_layout(nrow = 1) &
   theme(plot.tag = element_text(size = 14, face = "bold"))
+
+fig1_CD <- (fig1_C | fig1_D) +
+  plot_layout(nrow = 1) &
+  theme(plot.tag = element_text(size = 14, face = "bold"))
+
+
+# Create figure
+fig1 <- fig1_AB / fig1_CD + 
+  plot_layout(nrow = 2) & 
+  theme(plot.tag = element_text(size = 14, face = "bold"))
+
 
 # Save figure with all panels
 fig1
-#ggsave(here("Figures/raw", "figure_1.pdf"), width = 11, height = 17, dpi = 300)
-#ggsave(here("Figures/raw", "figure_1.png"), width = 11, height = 17, dpi = 300)
+#ggsave(here("Figures/raw", "figure_1.pdf"), width = 15, height = 10, dpi = 300)
+#ggsave(here("Figures/raw", "figure_1.png"), width = 15, height = 10, dpi = 300)
 
 ```
 
@@ -762,6 +773,7 @@ fig4_a
 
 
 ## Panel B: Chord diagram of authors collaborations
+
 ```{r}
 # Load bibliometric data
 dim(bib_data) 
