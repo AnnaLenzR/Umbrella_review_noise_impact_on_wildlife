@@ -1,5 +1,5 @@
 Variable,Category/Formats,Definition
-extractor_initials,"AL, ML, etc.","Initials of the data extractor, first name and last name initials."
+extractor_initials,"AA, BB, etc.","Initials of the data extractor, first name and last name initials."
 study_id,"e.g., smith_2020",Unique ID of the review: firstauthor_year format
 doi,"e.g., 10.1093/beheco/ar","Digital Object Identifier (e.g., 10.1093/beheco/ar). Matched from journal metadata"
 year,YYYY,Year of publication extracted from journal metadata
