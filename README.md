@@ -16,7 +16,8 @@ Anna Lenz1*, Ayumi Mizuno1, Erick Lundgren1, Kyle Morrison2, Santiago Ortega1, M
 ## **Overview**
 This repository contains the data, code, and figures supporting the paper: </br>
 
-Lenz A., Mizuno A., Lundgren E., Morrison K., Ortega S., Lagisz M., & Nakagawa S. (2025). A systematic map of systematic reviews on anthropogenic noise impacts on wildlife: evidence gaps, policy attention, and quality appraisal.
+Lenz A., Mizuno A., Lundgren E., Morrison K., Ortega S., Lagisz M., & Nakagawa S. (2025). A systematic map of systematic reviews on anthropogenic noise impacts on wildlife: evidence gaps, policy attention, and quality appraisal [Preprint]. EcoEvoRxiv. https://doi.org/10.32942/X2435S </br>
+
 The project systematically maps almost two decades of secondary syntheses (systematic reviews, maps, and meta-analyses) addressing the effects of anthropogenic noise on wildlife. It evaluates the methodological quality of these syntheses, examines their bibliometric patterns, and quantifies their influence in policy documents.
 
 
