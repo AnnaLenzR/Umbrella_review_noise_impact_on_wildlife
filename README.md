@@ -24,7 +24,7 @@ The project systematically maps almost two decades of secondary syntheses (syste
 ---
 
 ## **Abstract**
-As systematic reviews on the effects of anthropogenic noise on wildlife increasingly inform policy, a critical evaluation of this secondary evidence is essential. We assessed the scope, quality, and policy relevance of existing syntheses in this field. Following a preregistered protocol, we conducted a systematic search in Scopus, Web of Science, and Google Scholar, identifying 50 syntheses (systematic reviews, maps, and meta-analyses). Of these syntheses, we included 47 in the bibliometric analysis, 23 in the policy attention analysis, and 44 in the critical appraisal. Syntheses were published between 2008 and 2025, focusing on behavioural, physiological, and communication outcomes in wildlife. Most examined transportation and energy-related noise and reviewed evidence from marine, followed by terrestrial ecosystems. We found critical gaps in taxonomic coverage, with notable underrepresentation of invertebrates, amphibians, and reptiles. Most syntheses were led by researchers from the United Kingdom, Canada, and the United States, with limited participation from non-English-speaking countries. Almost half were cited in policy documents, mainly government and regulatory submissions. Syntheses on marine environments received the most policy citations, while those on urban noise received the least. There was no significant difference in quality scores between policy-cited and non-cited syntheses, and most were rated low due to methodological and reporting shortcomings. Our findings highlight the need to fill synthesis gaps and improve methodological transparency to strengthen the evidence base for policy decisions on anthropogenic noise. </br>
+As systematic reviews on the effects of anthropogenic noise on wildlife increasingly inform policy, a critical evaluation of this secondary evidence is essential. We assessed the scope, quality, and policy attention of existing syntheses in this field. Following a preregistered protocol, we conducted a systematic search in Scopus, Web of Science, and Google Scholar, identifying 50 syntheses (systematic reviews, maps, and meta-analyses). We included all 50 syntheses in the systematic map, critical appraisal, and policy-attention analysis, and found that 23 had received policy citations. We included 47 syntheses in the bibliometric analysis. Syntheses were published between 2008 and 2025, with a focus on behavioural, physiological, and communication outcomes in wildlife. Most examined transportation and energy-related noise and reviewed evidence from marine, followed by terrestrial ecosystems. We found critical gaps in taxonomic coverage, with notable underrepresentation of invertebrates, amphibians, and reptiles. Most syntheses were led by researchers from the United Kingdom, Canada, and the United States, with limited participation from non-English-speaking countries. Almost half were cited in policy documents, mainly government and regulatory submissions. Syntheses on marine environments received the most policy citations, while those on urban noise received the least. There was no significant difference in quality scores between policy-cited and non-cited syntheses, and most were rated low due to methodological and reporting shortcomings. Our findings highlight the need to fill synthesis gaps and improve methodological transparency to strengthen the evidence base for policy decisions on anthropogenic noise. </br>
 
 Keywords: Bibliometric analysis; Umbrella review; CEESAT appraisal; Soundscape ecology; Environmental stressors; Conservation policy; Biodiversity management
 
@@ -36,31 +36,37 @@ Keywords: Bibliometric analysis; Umbrella review; CEESAT appraisal; Soundscape e
 ├── Umbrella_review_noise.Rproj     # R project file
 ├── LICENSE                         # MIT License
 ├── R/                              # Annotated R scripts for analyses and figures
-│   └── umbrella_review_main.R      # Main script producing all figures and analyses
+│   ├── Overview_figures copy.Rmd                  # Main figure and analysis workflow
+│   ├── Figure_1_systematic_map_evidence_matrix.R # Standalone main Figure 1
+│   └── Figure_3_bibliometric_map_chord.R         # Standalone main Figure 3
+│
+├── final_ms/                       # Submission-ready Word documents
+│   ├── Noise_SysMap_MS_200726_aligned.docx
+│   ├── Online_Resource1_200726_aligned.docx
+│   └── Reviewers_Responses_200726_aligned.docx
 │
 ├── Data/                           # Final cleaned datasets used in analyses
 │   ├── Dataset1_map_data_extraction.csv
 │   ├── Dataset2_bibliometric_data.csv
-│   ├── Dataset3_policy_data_extraction.csv
-│   ├── Dataset3.1_policy_citation_counts_PlumX.csv
-│   ├── Dataset4_cessat_assessments.csv
-│   ├── Dataset5_cessat_processed.csv
+│   ├── Dataset_3_policy_data_extraction.csv
+│   ├── Dataset_3.1_policy_citation_counts_PlumX.csv
+│   ├── Dataset4_ceesat_assessments.csv
+│   ├── Dataset5_ceesat_processed.csv
 │   └── bibliometric.bib            # Dataset2_bibliometric_data in .bib format
 │
 ├── Metadata/                       # Codebooks describing each dataset
 │   ├── Dataset1_map_data_extraction.csv
 │   ├── Dataset2_bibliometric_data.csv
-│   ├── Dataset3_policy_data_extraction.csv
-│   ├── Dataset3.1_policy_citation_counts_PlumX.csv
-│   ├── Dataset4_cessat_assessments.csv
-│   └── Dataset5_cessat_assessments.csv
+│   ├── Dataset_3_policy_data_extractioncsv.csv
+│   └── Dataset4_ceesat_assesments.csv
 │
 ├── Figures/                        # Final publication figures (PNG)
-│   ├── Figure_1_Review_characteristics_and_content_mapping.png
+│   ├── Figure_1_Systematic_map.png
 │   ├── Figure_2_taxonomic_scope.png
 │   ├── Figure_3_authors_affiliation_collaboration.png
-│   ├── Figure_4_scope_policy_documents_citing_syntheses.png
-│   └── Figure_5_CEESAT_assessment_syntheses.png
+│   ├── Figure_4_scope_policy_ documents_citing_syntheses.png
+│   ├── Figure_5_CEESAT_assessment_syntheses.png
+│   └── raw/                        # Reproducible figure-workflow outputs
 </code></pre>
 
 ---
@@ -71,10 +77,10 @@ Keywords: Bibliometric analysis; Umbrella review; CEESAT appraisal; Soundscape e
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Dataset1_map_data_extraction.csv**                      | Main dataset for the systematic map. Includes metadata and classification of 50 included syntheses by study type, taxa, outcomes, and noise source.           |
 | **Dataset2_bibliometric_data.csv** / **bibliometric.bib** | Bibliometric information for all syntheses (authors, affiliations, journal, citation counts). The `.bib` version is the same document for analysis in R.      |
-| **Dataset3_policy_data_extraction.csv**                   | Records of policy citations, including document type, level, country, and ecological context.                                                                 |
-| **Dataset3.1_policy_citation_counts_PlumX.csv**           | Extracted policy citation counts and attention metrics from PlumX.                                                                                            |
-| **Dataset4_cessat_assessments.csv**                       | Raw CEESAT 2.1 appraisal scores for each synthesis.                                                                                                           |
-| **Dataset5_cessat_processed.csv**                         | Cleaned CEESAT dataset used in visualizations and statistical summaries.                                                                                      |
+| **Dataset_3_policy_data_extraction.csv**                  | Records of policy citations, including document type, level, country, and ecological context.                                                                 |
+| **Dataset_3.1_policy_citation_counts_PlumX.csv**          | Extracted policy citation counts and attention metrics from PlumX.                                                                                            |
+| **Dataset4_ceesat_assessments.csv**                       | Raw CEESAT 2.1 appraisal scores for each synthesis.                                                                                                           |
+| **Dataset5_ceesat_processed.csv**                         | Cleaned CEESAT dataset used in visualisations and statistical summaries.                                                                                      |
 
 ---
 
@@ -85,7 +91,7 @@ Keywords: Bibliometric analysis; Umbrella review; CEESAT appraisal; Soundscape e
 - RStudio (Posit, ≥ 2024.12)
 
 **Core Packages:**
-tidyverse, ggplot2, patchwork, paletteer, treemapify, circlize, ComplexUpset, rphylopic, ggthemes, readxl, here, dplyr, stringr, bibliometrix, RColorBrewer, rnaturalearth, rnaturalearthdata
+tidyverse, ggplot2, patchwork, paletteer, treemapify, circlize, ComplexUpset, png, rphylopic, ggthemes, readxl, here, dplyr, stringr, bibliometrix, RColorBrewer, rnaturalearth, rnaturalearthdata
 
 **To reproduce Figures and Analyses**
 1. Clone this repository </br>
@@ -96,26 +102,29 @@ tidyverse, ggplot2, patchwork, paletteer, treemapify, circlize, ComplexUpset, rp
 2. Open Umbrella_review_noise.Rproj in RStudio. </br>
 3. Run the main analysis script:
 
-   source("R/umbrella_review_main.R")
+   rmarkdown::render("R/Overview_figures copy.Rmd")
 
-4. The script will generate the six main figures and supplementary figures in the /Figures directory.
+4. The workflow generates the five main figures and supplementary figures in the `/Figures` directory.
 
 ---
 
 ## **Script Outline**
 
-- The main R script is organized by figure sections and analysis:
+- The main R Markdown workflow is organised by figure sections and analysis:
 - Load packages and data </br>
 **Figures:**
-- Figure 1: Systematic map—quantitative and qualitative trends
-- Figure 2: Taxonomic groups— treemap
-- Figure 3: Annual trends in outcomes, noise sources, and environments
-- Figure 4: Bibliometric maps and collaboration networks
-- Figure 5: CEESAT scores: CEESAT question scores (all syntheses) </br>
+- Figure 1: Systematic-map evidence matrix and coverage summary
+- Figure 2: Taxonomic scope treemap
+- Figure 3: First-author geography and country co-authorship chord diagram
+- Figure 4: Scope of policy documents citing the included syntheses
+- Figure 5: CEESAT reporting and methodological quality scores </br>
 **Statistical comparisons:**
 - Analysis: Syntheses quality analysis— Cited vs not cited in policy </br>
 **Supplementary figures:** </br>
-- Keywords, citation counts, policy trends
+- Figure S3: Synthesis characteristics and content mapping
+- Figures S4–S5: Citation and keyword analyses
+- Figures S6–S10: Policy-citation counts, trends, scope, and geography
+- Figure S11: CEESAT comparison for policy-cited and non-policy-cited syntheses
 
 ---
 
@@ -143,10 +152,5 @@ Anna Lenz </br>
 Collaboration for Open Science and Synthesis in Ecology and Evolution (COSSEE) </br>
 University of Alberta, Edmonton, AB, Canada </br>
 📧 lenzrive@ualberta.ca
-
-
-
-
-
 
 

@@ -35,7 +35,8 @@ pacman::p_load(
   rnaturalearth,
   ggalluvial,
   circlize,
-  countrycode
+  countrycode,
+  png
 )
 
 
@@ -48,398 +49,437 @@ pacman::p_load(
 #Load data
 map <- read_csv(here("Data", "Dataset1_map_data_extraction.csv"))
 biblio <- read_csv(here("Data", "Dataset2_bibliometric_data.csv"))
-bib_data <- convert2df(here("Data", "bibliometric.bib"), dbsource = "scopus", format = "bibtex")
 dat_policy <- read.csv(here("Data", "Dataset_3_policy_data_extraction.csv"))
 pol_ci <- read_csv(here("Data", "Dataset_3.1_policy_citation_counts_PlumX.csv"))
 dat_ceesat <- read.csv(here("Data", "Dataset5_ceesat_processed.csv"))
 ```
 
 
-#¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
-# Figure 1: Systematic map 
+#¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
 
-## Panel A: Quantitative and qualitative studies counts
+# Figure 1: Systematic-map evidence matrix
 
-```{r}
-# 1. Process the quantitative/qualitative column
-quant_type <- map %>%
-  select(study_id, year, quantitative) %>%
-  mutate(quant = case_when(
-    tolower(str_trim(quantitative)) == "yes" ~ "Quantitative",
-    tolower(str_trim(quantitative)) == "no" ~ "Qualitative",
-    TRUE ~ NA_character_
-  )) %>%
-  filter(!is.na(quant)) %>%
-  distinct(study_id, quant, year)
+## Setup and shared helpers
 
-# 2. Count studies per type, order for plotting
-quant_counts <- quant_type %>%
-  group_by(year, quant) %>%
-  summarize(paper_count = n()) %>%
-  arrange(-paper_count) %>%
-  mutate(quant = fct_reorder(quant, paper_count))
-quant_counts
+```{r figure-1-setup}
+n_syntheses <- n_distinct(map$study_id)
+
+# Restrained complementary palette inspired by editorial data graphics.
+colours <- c(
+  ink = "#243746",
+  muted_ink = "#52636F",
+  navy = "#315F7D",
+  coral = "#B5687A",
+  teal = "#568589",
+  plum = "#74627D",
+  moss = "#6E7F5B",
+  slate = "#8A8F98",
+  pale_navy = "#DCE7ED",
+  pale_tile = "#EDF2F5",
+  paper = "#FBFAF8",
+  line = "#CBD3D8"
+)
+
+split_categories <- function(data, variable) {
+  data %>%
+    select(study_id, {{ variable }}) %>%
+    separate_rows({{ variable }}, sep = ",") %>%
+    mutate({{ variable }} := str_trim({{ variable }})) %>%
+    filter(!is.na({{ variable }}), {{ variable }} != "") %>%
+    distinct()
+}
+
+# Label helper: "Transportation (37)".
+with_total <- function(label, n) paste0(label, " (", n, ")")
 
 
-# 3. Plotting
-fig1_A <- ggplot(quant_counts, aes(x = year, y = paper_count, fill = quant)) +
-  geom_col(position = position_stack(),  width = 0.7) +
-  geom_text(aes(label = paper_count, y = paper_count), #vjust = -0.5, 
-                position = position_stack(vjust = 0.5),  # Centered on each bar
-            size = 4, fontface = "bold") +
-  # Fill manual scale
-  scale_fill_manual(name = NULL, 
-                    values = c("Qualitative" = "#C6C1F0FF", 
-                               "Quantitative" = "#F498B6FF")
-                    )+
-  labs(
-    x = NULL,
-    y = "Number of syntheses",
-    tag = "A"  # Add tag for Figure A here
-  )+
+base_size <- 12
+
+theme_map <- function() {
+  theme_minimal(base_size = base_size) +
+    theme(
+      plot.background = element_rect(fill = colours["paper"], colour = NA),
+      panel.background = element_rect(fill = colours["paper"], colour = NA),
+      panel.grid = element_blank(),
+      plot.title = element_text(
+        face = "bold", size = base_size + 1, colour = colours["ink"],
+        margin = margin(b = 10)
+      ),
+      plot.tag = element_text(
+        face = "bold", size = base_size + 6, colour = colours["ink"]
+      ),
+      plot.tag.position = c(0, 1),
+      axis.text = element_text(colour = colours["ink"], size = base_size - 0.5),
+      axis.title = element_text(colour = colours["muted_ink"], size = base_size - 1),
+      legend.text = element_text(colour = colours["muted_ink"], size = base_size - 1.5),
+      legend.title = element_text(colour = colours["muted_ink"], size = base_size - 1.5),
+      plot.margin = margin(10, 12, 10, 12)
+    )
+}
+```
+## Panel A: Publication year and synthesis approach
+
+```{r figure-1-panel-a}
+approach_by_year <- map %>%
+  transmute(
+    study_id,
+    year,
+    approach = if_else(
+      str_to_lower(str_trim(quantitative)) == "yes",
+      "Quantitative",
+      "Narrative/Descriptive"
+    )
+  ) %>%
+  distinct() %>%
+  count(year, approach, name = "n") %>%
+  complete(
+    year = seq(min(map$year, na.rm = TRUE), max(map$year, na.rm = TRUE)),
+    approach = c("Narrative/Descriptive", "Quantitative"),
+    fill = list(n = 0)
+  )
+
+approach_counts <- approach_by_year %>%
+  summarise(n = sum(n), .by = approach)
+
+approach_labels <- set_names(
+  with_total(approach_counts$approach, approach_counts$n),
+  approach_counts$approach
+)
+
+year_totals <- approach_by_year %>%
+  summarise(n = sum(n), .by = year) %>%
+  filter(n > 0)
+
+panel_a <- ggplot(approach_by_year, aes(x = year, y = n, fill = approach)) +
+  geom_col(width = 0.62) +
+  geom_text(
+    data = year_totals,
+    aes(x = year, y = n, label = n),
+    inherit.aes = FALSE,
+    vjust = -0.6,
+    size = base_size / .pt * 0.92,
+    colour = colours["muted_ink"]
+  ) +
+  scale_fill_manual(
+    values = c(
+      "Narrative/Descriptive" = unname(colours["coral"]),
+      "Quantitative" = unname(colours["navy"])
+    ),
+    labels = approach_labels,
+    name = NULL
+  ) +
+  scale_x_continuous(
+    breaks = seq(min(approach_by_year$year), max(approach_by_year$year), by = 1),
+    expand = expansion(mult = 0.015)
+  ) +
   scale_y_continuous(
-  limits = c(0, 12),
-  breaks = seq(0, 12, 2)
-)+ 
-  scale_x_continuous(breaks = seq(from=min(quant_counts$year),
-                                  to=max(quant_counts$year), by =1 ) 
-                     )+
-  theme_minimal(base_size = 13) +
+    breaks = c(0, 5, 10),
+    expand = expansion(mult = c(0, 0.22))
+  ) +
+  labs(tag = "A", title = "PUBLICATION YEAR AND SYNTHESIS APPROACH", y = "Syntheses", x = NULL) +
+  theme_map() +
   theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "inside",
-    legend.position.inside = c(.15, .85),
-    #axis.text.x = element_text(size = 13),
-    #axis.title.y = element_text(size = 12),
-    panel.grid = element_blank(),
-    # plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
+    panel.grid.major.y = element_line(colour = colours["line"], linewidth = 0.3),
+    legend.position = c(0.01, 1.06),
+    legend.justification = c(0, 1),
+    legend.direction = "horizontal",
+    legend.key.size = unit(11, "pt"),
+    plot.title = element_text(
+      face = "bold", size = base_size + 1, colour = colours["ink"],
+      margin = margin(b = 22)
+    )
+  )
+```
+## Panel B: Noise source × biological outcome evidence matrix
+
+```{r figure-1-panel-b}
+noise_long <- split_categories(map, noise_source)
+outcome_long <- split_categories(map, outcome_category)
+
+noise_totals <- noise_long %>%
+  count(noise_source, name = "total") %>%
+  arrange(desc(total))
+
+outcome_totals <- outcome_long %>%
+  count(outcome_category, name = "total") %>%
+  arrange(desc(total))
+
+crosstab <- noise_long %>%
+  inner_join(outcome_long, by = "study_id", relationship = "many-to-many") %>%
+  count(noise_source, outcome_category, name = "n") %>%
+  complete(
+    noise_source = noise_totals$noise_source,
+    outcome_category = outcome_totals$outcome_category,
+    fill = list(n = 0)
+  ) %>%
+  left_join(noise_totals, by = "noise_source") %>%
+  left_join(outcome_totals, by = "outcome_category") %>%
+  mutate(
+    noise_label = factor(
+      with_total(noise_source, total.x),
+      levels = rev(with_total(noise_totals$noise_source, noise_totals$total))
+    ),
+    outcome_label = factor(
+      with_total(outcome_category, total.y),
+      levels = with_total(outcome_totals$outcome_category, outcome_totals$total)
+    ),
+    # White numerals only where the tile is dark enough to carry them.
+    label_colour = if_else(n >= 13, "#FFFFFF", unname(colours["ink"])),
+    label_colour = if_else(n == 0, unname(colours["line"]), label_colour)
   )
 
-fig1_A
-
-
+panel_b <- ggplot(crosstab, aes(x = outcome_label, y = noise_label, fill = n)) +
+  geom_tile(colour = colours["paper"], linewidth = 1.4) +
+  geom_text(
+    aes(label = n, colour = label_colour),
+    size = base_size / .pt * 0.95
+  ) +
+  scale_colour_identity() +
+  scale_fill_gradient(
+    low = colours["pale_tile"],
+    high = colours["ink"],
+    name = "Syntheses per combination",
+    guide = guide_colourbar(
+      title.position = "left",
+      title.vjust = 0.9,
+      barwidth = unit(110, "pt"),
+      barheight = unit(7, "pt"),
+      ticks = FALSE
+    )
+  ) +
+  scale_x_discrete(position = "top", expand = expansion(0)) +
+  scale_y_discrete(expand = expansion(0)) +
+  labs(tag = "B", title = "EVIDENCE MATRIX — NOISE SOURCE × BIOLOGICAL OUTCOME",
+       x = NULL, y = NULL) +
+  theme_map() +
+  theme(
+    axis.text.x.top = element_text(angle = 40, hjust = 0, vjust = 0,
+                                   colour = colours["ink"]),
+    legend.position = "bottom",
+    legend.justification = "left",
+    legend.direction = "horizontal",
+    legend.margin = margin(t = 10)
+  )
 ```
+## Panel C: Taxonomic scope
 
-## Panel B: Environment average per paper
-
-```{r}
-# Average number of environment types per paper
-# sum(env_counts$paper_count)/50 
-# 1.56
-
-# 1. Process ecosystem categories
-env <- map %>%
-  select(study_id, ecosystem_type) %>%
-  mutate(ecosystem_type = str_split(ecosystem_type, ",\\s*")) %>%  
-  unnest(ecosystem_type) %>%
-  mutate(ecosystem_type = str_trim(ecosystem_type)) %>%
-  filter(!is.na(ecosystem_type), ecosystem_type != "") %>%
-  distinct(study_id, ecosystem_type)
-
-# 2. Count syntheses per ecosystem category
-env_counts <- env %>%
-  count(ecosystem_type, name = "paper_count") %>%
-  arrange(-paper_count) %>%
-  mutate(ecosystem_type = fct_reorder(ecosystem_type, paper_count))
-
-# 3. Calculate automatic label
-n_syntheses <- n_distinct(map$study_id)
-env_total_assignments <- sum(env_counts$paper_count)
-env_mean_categories <- env_total_assignments / n_syntheses
-
-env_label <- paste0(
-  "Mean ecosystem categories per synthesis:\n",
-  sprintf("%.2f", env_mean_categories),
-  " (", env_total_assignments,
-  " category assignments\nacross ",
-  n_syntheses,
-  " syntheses)"
+```{r figure-1-panel-c}
+vertebrate_taxa <- c("Aves", "Mammalia", "Reptilia", "Fish", "Amphibia")
+invertebrate_taxa <- c(
+  "Invertebrates", "Arthropoda", "Mollusca", "Cnidaria",
+  "Echinodermata", "Annelida", "Bryozoa"
 )
 
-# 4. Show summary statistics
-env_counts %>% 
-  mutate(percentage = (paper_count / n_syntheses) * 100) %>%
-  print(n = Inf)
+taxonomic_membership <- map %>%
+  select(study_id, scope_taxon) %>%
+  separate_rows(scope_taxon, sep = ",") %>%
+  mutate(
+    scope_taxon = str_to_title(str_trim(scope_taxon)),
+    group = case_when(
+      scope_taxon %in% vertebrate_taxa ~ "Vertebrate",
+      scope_taxon %in% invertebrate_taxa ~ "Invertebrate",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  filter(!is.na(group)) %>%
+  distinct(study_id, group)
 
-# 5. UpSet plot data
-dat_upset_env <- env |> 
-  mutate(value = 1) |> 
-  pivot_wider(
-    id_cols = study_id,
-    names_from = ecosystem_type,
-    values_from = value,
-    values_fill = 0
+# "Mixed" is the overlap of the two groups, not a third exclusive group: those
+# syntheses are also counted in the Vertebrate and Invertebrate bars.
+taxonomic_overlap <- taxonomic_membership %>%
+  count(study_id) %>%
+  summarise(n = sum(n == 2)) %>%
+  pull(n)
+
+taxonomic_counts <- taxonomic_membership %>%
+  count(group, name = "n") %>%
+  bind_rows(tibble(group = "Mixed", n = taxonomic_overlap)) %>%
+  mutate(group = factor(group, levels = c("Mixed", "Invertebrate", "Vertebrate")))
+
+panel_c <- ggplot(taxonomic_counts, aes(x = n, y = group, fill = group)) +
+  geom_col(width = 0.62) +
+  geom_text(
+    aes(label = n),
+    hjust = -0.35,
+    size = base_size / .pt * 0.95,
+    colour = colours["ink"]
+  ) +
+  scale_fill_manual(
+    values = c(
+      "Vertebrate" = unname(colours["plum"]),
+      "Invertebrate" = unname(colours["teal"]),
+      "Mixed" = unname(colours["slate"])
+    ),
+    guide = "none"
+  ) +
+  scale_x_continuous(limits = c(0, n_syntheses), expand = expansion(mult = c(0, 0.02))) +
+  scale_y_discrete(expand = expansion(add = 0.5)) +
+  labs(tag = "C", title = "TAXONOMIC SCOPE", x = NULL, y = NULL) +
+  theme_map() +
+  theme(
+    axis.text.x = element_blank(),
+    plot.title = element_text(
+      face = "bold", size = base_size + 1, colour = colours["ink"],
+      margin = margin(b = 4)
+    )
+  )
+```
+## Panel D: Environmental scope
+
+```{r figure-1-panel-d}
+environment_counts <- split_categories(map, ecosystem_type) %>%
+  count(ecosystem_type, name = "n") %>%
+  arrange(n) %>%
+  mutate(ecosystem_type = fct_inorder(ecosystem_type))
+
+panel_d <- ggplot(environment_counts, aes(x = n, y = ecosystem_type, fill = ecosystem_type)) +
+  geom_col(width = 0.62) +
+  geom_text(
+    aes(label = n),
+    hjust = -0.35,
+    size = base_size / .pt * 0.95,
+    colour = colours["ink"]
+  ) +
+  scale_fill_manual(
+    values = c(
+      "Marine" = unname(colours["navy"]),
+      "Terrestrial" = unname(colours["moss"]),
+      "Freshwater" = unname(colours["teal"]),
+      "Urban" = unname(colours["coral"])
+    ),
+    guide = "none"
+  ) +
+  scale_x_continuous(limits = c(0, n_syntheses), expand = expansion(mult = c(0, 0.02))) +
+  scale_y_discrete(expand = expansion(add = 0.5)) +
+  labs(tag = "D", title = "ENVIRONMENTAL SCOPE", x = NULL, y = NULL) +
+  theme_map() +
+  theme(
+    axis.text.x = element_blank(),
+    plot.title = element_text(
+      face = "bold", size = base_size + 1, colour = colours["ink"],
+      margin = margin(b = 4)
+    )
+  )
+```
+## Panel E: Coverage breadth
+
+```{r figure-1-panel-e}
+breadth_of <- function(long_data, variable, label) {
+  long_data %>%
+    count(study_id, name = "categories") %>%
+    summarise(
+      Multiple = sum(categories > 1),
+      Single = sum(categories == 1),
+      assignments = sum(categories)
+    ) %>%
+    mutate(dimension = label, mean_categories = assignments / n_syntheses)
+}
+
+breadth <- bind_rows(
+  breadth_of(noise_long, noise_source, "Noise sources"),
+  breadth_of(outcome_long, outcome_category, "Outcomes"),
+  breadth_of(split_categories(map, ecosystem_type), ecosystem_type, "Environments"),
+  breadth_of(taxonomic_membership, group, "Taxon groups")
+) %>%
+  mutate(dimension = fct_inorder(dimension) %>% fct_rev())
+
+breadth_long <- breadth %>%
+  pivot_longer(c(Multiple, Single), names_to = "breadth", values_to = "n") %>%
+  mutate(breadth = factor(breadth, levels = c("Multiple", "Single")))
+
+panel_e <- ggplot(breadth_long, aes(x = n, y = dimension, fill = breadth)) +
+  geom_col(width = 0.6, position = position_stack(reverse = TRUE)) +
+  geom_text(
+    aes(label = n, colour = breadth),
+    position = position_stack(vjust = 0.5, reverse = TRUE),
+    size = base_size / .pt * 0.88
+  ) +
+  scale_fill_manual(
+    values = c(
+      "Multiple" = unname(colours["ink"]),
+      "Single" = unname(colours["pale_navy"])
+    ),
+    labels = c("Multiple" = "Multiple categories", "Single" = "Single"),
+    name = NULL
+  ) +
+  scale_colour_manual(
+    values = c("Multiple" = "#FFFFFF", "Single" = unname(colours["muted_ink"])),
+    guide = "none"
+  ) +
+  scale_x_continuous(
+    limits = c(0, n_syntheses),
+    expand = expansion(mult = c(0, 0.02))
+  ) +
+  labs(tag = "E", title = "COVERAGE BREADTH", x = NULL, y = NULL) +
+  theme_map() +
+  theme(
+    axis.text.x = element_blank(),
+    legend.position = c(0.01, 1.10),
+    legend.justification = c(0, 1),
+    legend.direction = "horizontal",
+    legend.key.size = unit(11, "pt"),
+    plot.title = element_text(
+      face = "bold", size = base_size + 1, colour = colours["ink"],
+      margin = margin(b = 20)
+    )
+  )
+```
+## Assemble and save Figure 1
+
+```{r figure-1-assemble}
+# The right-hand panels are nested as their own patchwork. Laying C, D and E out
+# in the same grid as B would make patchwork align their plot areas to B's, and
+# B's panel starts low because of its rotated column labels — which pushed the
+# C bars far below their title.
+right_column <- wrap_plots(
+  panel_c, panel_d, panel_e,
+  ncol = 1,
+  heights = c(0.80, 1.00, 1.00)
+) +
+  plot_annotation(
+    theme = theme(
+      plot.background = element_rect(fill = colours["paper"], colour = NA),
+      plot.margin = margin(0, 0, 0, 0)
+    )
   )
 
-# 6. Plotting
-fig1_B <- upset(
-  dat_upset_env,
-  intersect = colnames(dat_upset_env)[-1], 
-  name = "",
-  base_annotations = list(
-    "Intersection size" = intersection_size(
-      mapping = aes(fill = 'bars_color')  
-    ) + 
-      annotate(
-        geom = "text", x = Inf, y = Inf,
-        label = env_label,
-        vjust = 1, hjust = 1
-      ) +
-      ylab("Number of syntheses") +
-      scale_fill_manual(
-        values = c('bars_color' = '#7370b3'), 
-        guide = 'none'
-      ) +
-      scale_y_continuous(
-        limits = c(0, 20),
-        breaks = seq(0, 20, 4)
-      ) + 
-      labs(tag = "B") +
-      theme_minimal(base_size = 14) +
-      theme(
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.background = element_blank(),
-        axis.title.x = element_blank(),
-        axis.text.x  = element_blank(),
-        axis.ticks.x = element_blank(), 
-        axis.title.y = element_blank()
-      )
-  ),
-  matrix = intersection_matrix(
-    geom = geom_point(shape = 16, size = 1.8)
-  ),
-  set_sizes = FALSE,
-  min_size = 0
+# wrap_elements() seals the right column into a single grob. Without it patchwork
+# aligns C's plot area to B's, and B's panel starts low because of its rotated
+# column labels — which dropped the C bars well below their own title.
+body <- wrap_plots(
+  panel_b,
+  wrap_elements(full = right_column),
+  nrow = 1,
+  widths = c(4, 3)
 )
 
-fig1_B
-
-```
-
-
-## Panel C: Noise source average per paper
-
-```{r}
-# Average number of noise sources per paper
-# sum(noise_counts$paper_count)/50 
-# 2.84
-
-# 1. Process noise-source categories
-noise <- map %>%
-  select(study_id, noise_source) %>%
-  mutate(noise_source = str_split(noise_source, ",\\s*")) %>%  
-  unnest(noise_source) %>%
-  mutate(noise_source = str_trim(noise_source)) %>%
-  filter(!is.na(noise_source), noise_source != "") %>%
-  distinct(study_id, noise_source)
-
-# 2. Count syntheses per noise-source category
-noise_counts <- noise %>%
-  count(noise_source, name = "paper_count") %>%
-  arrange(-paper_count) %>%
-  mutate(noise_source = fct_reorder(noise_source, paper_count))
-
-# 3. Calculate automatic label
-n_syntheses <- n_distinct(map$study_id)
-
-noise_total_assignments <- sum(noise_counts$paper_count)
-noise_mean_categories <- noise_total_assignments / n_syntheses
-
-noise_label <- paste0(
-  "Mean noise-source categories per synthesis:\n",
-  sprintf("%.2f", noise_mean_categories),
-  " (", noise_total_assignments,
-  " category assignments\nacross ",
-  n_syntheses,
-  " syntheses)"
-)
-
-# 4. Show summary statistics
-noise_counts %>% 
-  mutate(percentage = (paper_count / n_syntheses) * 100) %>%
-  print(n = Inf)
-
-# 5. UpSet plot data
-dat_upset_noise <- noise |> 
-  mutate(value = 1) |> 
-  pivot_wider(
-    id_cols = study_id,
-    names_from = noise_source,
-    values_from = value,
-    values_fill = 0
+figure_1 <- wrap_plots(panel_a, body, ncol = 1, heights = c(0.85, 3.15)) +
+  plot_annotation(
+    theme = theme(
+      plot.background = element_rect(fill = colours["paper"], colour = NA),
+      plot.margin = margin(10, 10, 10, 10)
+    )
   )
 
-# 6. Plotting
-fig1_C <- upset(
-  dat_upset_noise,
-  intersect = colnames(dat_upset_noise)[-1], 
-  name = "",
-  base_annotations = list(
-    "Intersection size" = intersection_size(
-      mapping = aes(fill = 'bars_color')
-    ) +
-      annotate(
-        geom = "text", x = Inf, y = Inf,
-        label = noise_label,
-        vjust = 1, hjust = 1
-      ) +
-      ylab("Number of syntheses") +
-      scale_fill_manual(
-        values = c('bars_color' = '#7370b3'), 
-        guide = 'none'
-      ) +
-      scale_y_continuous(
-        limits = c(0, 8),
-        breaks = seq(0, 8, 2)
-      ) + 
-      labs(tag = "C") +
-      theme_minimal(base_size = 14) +
-      theme(
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.background = element_blank(),
-        axis.title.x = element_blank(),
-        axis.text.x  = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.title.y = element_blank()
-      )
-  ),
-  matrix = intersection_matrix(
-    geom = geom_point(shape = 16, size = 1.8)
-  ),
-  set_sizes = FALSE,
-  min_size = 0
+figure_1
+
+# Preserve the minimum 12-point typography by exporting at the dimensions below.
+ggsave(
+  here("Figures", "raw", "Figure_1_systematic_map_evidence_matrix.pdf"),
+  figure_1,
+  width = 14,
+  height = 11,
+  units = "in"
 )
 
-fig1_C
-
-```
-## Panel D. Outcome average per paper:
-
-```{r}
-# Average number of outcome categories per paper
-# sum(outcome_counts$paper_count)/50
-# 2.78
-
-# 1. Process outcome categories
-outcomes <- map %>%
-  select(study_id, outcome_category) %>%
-  mutate(outcome_category = str_split(outcome_category, ",\\s*")) %>%  
-  unnest(outcome_category) %>%
-  mutate(outcome_category = str_trim(outcome_category)) %>%
-  filter(!is.na(outcome_category), outcome_category != "") %>%
-  distinct(study_id, outcome_category)
-
-# 2. Count syntheses per outcome category
-outcome_counts <- outcomes %>%
-  count(outcome_category, name = "paper_count") %>%
-  arrange(-paper_count) %>%
-  mutate(outcome_category = fct_reorder(outcome_category, paper_count))
-
-# 3. Calculate automatic label
-n_syntheses <- n_distinct(map$study_id)
-
-outcome_total_assignments <- sum(outcome_counts$paper_count)
-outcome_mean_categories <- outcome_total_assignments / n_syntheses
-
-outcome_label <- paste0(
-  "Mean outcome categories per synthesis:\n",
-  sprintf("%.2f", outcome_mean_categories),
-  " (", outcome_total_assignments,
-  " category assignments\nacross ",
-  n_syntheses,
-  " syntheses)"
+ggsave(
+  here("Figures", "raw", "Figure_1_systematic_map_evidence_matrix.png"),
+  figure_1,
+  width = 14,
+  height = 11,
+  units = "in",
+  dpi = 300
 )
-
-# 4. Show summary statistics
-outcome_counts %>% 
-  mutate(percentage = (paper_count / n_syntheses) * 100) %>%
-  print(n = Inf)
-
-# 5. UpSet plot data
-dat_upset_outcomes <- outcomes |> 
-  mutate(value = 1) |> 
-  pivot_wider(
-    id_cols = study_id,
-    names_from = outcome_category,
-    values_from = value,
-    values_fill = 0
-  )
-
-# 6. Plotting
-fig1_D <- upset(
-  dat_upset_outcomes,
-  intersect = colnames(dat_upset_outcomes)[-1], 
-  name = "",
-  
-  base_annotations = list(
-    "Intersection size" = intersection_size(
-      mapping = aes(fill = 'bars_color')
-    ) +
-      annotate(
-        geom = "text", x = Inf, y = Inf,
-        label = outcome_label,
-        vjust = 1, hjust = 1
-      ) +
-      ylab("Number of syntheses") +
-      scale_fill_manual(
-        values = c('bars_color' = '#7370b3'), 
-        guide = 'none'
-      ) +
-      scale_y_continuous(
-        limits = c(0, 10),
-        breaks = seq(0, 10, 2)
-      ) + 
-      labs(tag = "D") +
-      theme_minimal(base_size = 14) +
-      theme(
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.background = element_blank(),
-        axis.title.x = element_blank(),
-        axis.text.x  = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.title.y = element_blank()
-      )
-  ),
-  
-  matrix = intersection_matrix(
-    geom = geom_point(shape = 16, size = 1.8)
-  ),
-
-  set_sizes = FALSE,
-  min_size = 0
-)
-
-fig1_D
-
-```
-
-## Patchwork plots- Figure 1—assemble thefull figure
-```{r}
-# Create panel pairs for better layout
-
-fig1_AB <- (fig1_A | fig1_B) +
-  plot_layout(nrow = 1) &
-  theme(plot.tag = element_text(size = 14, face = "bold"))
-
-fig1_CD <- (fig1_C | fig1_D) +
-  plot_layout(nrow = 1) &
-  theme(plot.tag = element_text(size = 14, face = "bold"))
-
-
-# Create figure
-fig1 <- fig1_AB / fig1_CD + 
-  plot_layout(nrow = 2) & 
-  theme(plot.tag = element_text(size = 14, face = "bold"))
-
-
-# Save figure with all panels
-fig1
-#ggsave(here("Figures/raw", "figure_1.pdf"), width = 15, height = 10, dpi = 300)
-#ggsave(here("Figures/raw", "figure_1.png"), width = 15, height = 10, dpi = 300)
-
 ```
 
 
@@ -491,7 +531,7 @@ taxon_counts3 <- taxon_counts3 %>%
   )
 
 # Plot treemap (no subgroup label, just colored borders)
-fig2 <- ggplot(taxon_counts3, aes(area = mentions, fill = fill_color, label = label, subgroup = group)) +
+figure_2 <- ggplot(taxon_counts3, aes(area = mentions, fill = fill_color, label = label, subgroup = group)) +
   geom_treemap(color = "white", size = 1.8) +
   geom_treemap_subgroup_border(color = "white", size = 3) +   # Group borders only!
   # No geom_treemap_subgroup_text()  # <--- This removes the big faded group labels—for refining in vector editor software
@@ -509,11 +549,11 @@ fig2 <- ggplot(taxon_counts3, aes(area = mentions, fill = fill_color, label = la
   )
 
 # Show figure
-fig2
+figure_2
 
 # Save Figure
-#ggsave(here("Figures/raw", "Figure_2_taxa.pdf"), width = 14, height = 10, dpi= 300)
-#ggsave(here("Figures/raw", "Figure_2_taxa.png"), width = 14, height = 10, dpi = 300)
+#ggsave(here("Figures/raw", "Figure_2_taxonomic_scope.pdf"), width = 14, height = 10, dpi = 300)
+#ggsave(here("Figures", "Figure_2_taxonomic_scope.png"), width = 14, height = 10, dpi = 300)
 
 
 ```
@@ -523,409 +563,380 @@ fig2
 
 #¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
 
-# Figure 3: Annual trends
+# Figure 3: Bibliometric analysis
 
-## Panel A: Outcome per time 
+## Setup and country-name cleaning
 
-```{r}
-# Process outcomes
-outcome_trends <- map %>%
-  filter(!is.na(outcome_category)) %>%
-  separate_rows(outcome_category, sep = ",\\s*") %>%
-  mutate(outcome_category = str_trim(outcome_category)) %>%
-  filter(outcome_category != "") %>%
-  distinct(study_id, year, outcome_category) %>%
-  count(year, outcome_category, name = "n")
-
-
-# Plot (horizontal stacked bar with legend circles)
-fig3_a <- ggplot(outcome_trends, aes(
-  x    = year, 
-  y    = n,
-  fill = outcome_category
-)) +
-  geom_col(width = 0.7, position = position_stack()) +
-  geom_text(
-    aes(label = n),
-    position = position_stack(vjust = 0.5),
-    size = 3,
-    colour = "white",
-    fontface = "bold"
-  ) +
-  scale_fill_paletteer_d(
-  "ggthemes::Purple_Pink_Gray",
-  name = "Outcomes trends",
-  guide = guide_legend(
-    override.aes = list(
-      shape = 21,
-      size = 4,
-      color = NA
-    )
-  )
-  ) +
-  labs(
-     x = NULL,
-    y = "Number of syntheses"#,
-  ) +
-  scale_x_continuous(breaks = seq(from = min(outcome_trends$year), 
-                                  to = max(outcome_trends$year), by = 1)
-                     )+
-  theme_minimal(base_size = 13) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "inside",
-    legend.position.inside = c(.15, .65),
-    legend.text = element_text(size = 9),
-    legend.title = element_blank(),
-    panel.grid = element_blank()
-    
-  )
-
-#Show plot
-fig3_a
-```
+```{r figure-3-setup}
+# Panel B's co-authorship network comes from bibliometrix, matching the original
+# Overview_figures.Rmd analysis. Set to FALSE to derive the same network directly
+# from the Scopus affiliation strings instead (see build_edges_direct() below);
+# both routes return the same 25 countries and 98 country pairs.
+# Use the cleaned Scopus affiliation strings directly. This is equivalent to the
+# bibliometrix route but avoids a version-sensitive `bibtag` import failure.
+USE_BIBLIOMETRIX <- FALSE
 
 
-## Panel B: Noise source
-
-```{r}
-# Prepare data
-noise_trends <- map %>%
-  filter(!is.na(noise_source)) %>%
-  separate_rows(noise_source, sep = ",") %>%
-  mutate(noise_source = str_trim(noise_source)) %>%
-  filter(noise_source != "") %>%
-  distinct(study_id, year, noise_source) %>%
-  count(year, noise_source, name = "count")
-
-# Plot (horizontal stacked bar graoph with legend)
-fig3_b <- ggplot(noise_trends, aes(
-  x    = year, 
-  y    = count,
-  fill = noise_source
-)) +
-  geom_col(width = 0.7, position = position_stack()) +
-  geom_text(
-    aes(label = count),
-    position = position_stack(vjust = 0.5),
-    size = 3,
-    colour = "white",
-    fontface = "bold"
-  ) +
-  scale_fill_paletteer_d(
-  "ggthemes::Purple_Pink_Gray",
-  name = "Noise source",
-  guide = guide_legend(
-    override.aes = list(
-      shape = 21,
-      size = 4,
-      color = NA
-    )
-  )
-  ) +
-   labs(
-     x = NULL,
-    y = "Number of syntheses"#,
-  ) +
-  scale_x_continuous(breaks = seq(from = min(noise_trends$year), 
-                                  to = max(noise_trends$year), by = 1)
-                     )+
-  theme_minimal(base_size = 13) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "inside",
-    legend.position.inside = c(.15, .65),
-    legend.text = element_text(size = 9),
-    legend.title = element_blank(),
-    panel.grid = element_blank()
-    
-  )
-
-# Show pot
-fig3_b
-```
-
-
-## Panel C: Environment
-
-```{r}
-
-# Prepare data
-ecosystem_trends <- map %>%
-  filter(!is.na(ecosystem_type)) %>%
-  separate_rows(ecosystem_type, sep = "[,;]") %>%
-  mutate(ecosystem_type = str_trim(ecosystem_type)) %>%
-  filter(ecosystem_type != "") %>%
-  distinct(study_id, year, ecosystem_type) %>%
-  count(year, ecosystem_type, name = "count")
-
-
-# Plot bargraph
-fig3_c <-ggplot(ecosystem_trends, aes(
-  x    = year,
-  y    = count,
-  fill = ecosystem_type
-)) +
-  geom_col(width = 0.7, position = position_stack()) +
-  geom_text(
-    aes(label = count),
-    position = position_stack(vjust = 0.5),
-    size = 3,
-    colour = "white",
-    fontface = "bold"
-  ) +
-   scale_fill_paletteer_d(
-  "ggthemes::Purple_Pink_Gray",
-  name = "Environment trends",
-  guide = guide_legend(
-    override.aes = list(
-      shape = 21,
-      size = 4,
-      color = NA
-    )
-  )
-  ) +
-  labs(
-     x = NULL,
-    y = "Number of syntheses"#,
-  ) +
-  scale_x_continuous(breaks = seq(from = min(ecosystem_trends$year), 
-                                  to = max(ecosystem_trends$year), by = 1)
-                     )+
-  theme_minimal(base_size = 13) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "inside",
-    legend.position.inside = c(.15, .65),
-    legend.text = element_text(size = 9),
-    legend.title = element_blank(),
-    panel.grid = element_blank()
-    
-  )
-
-# Show plot
-fig3_c
-
-```
-
-## Patchwork plots-Figure 3
-
-```{r}
-# We assembled the panels to create the final figure
-fig3 <- fig3_a + fig3_b + fig3_c + plot_layout(nrow = 3) + plot_annotation(tag_levels = "A")
-
-# Show figure
-fig3
-
-# Save figure
-#ggsave(here("Figures/raw", "Figure_3_trends.pdf"), width = 11, height = 10, dpi = 300)
-#ggsave(here("Figures/raw", "Figure_3_trends.png"), width = 11, height = 10, dpi = 300)
-
-```
-
-
-#¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
-
-
-# Figure 4: Bibliometric analysis
-
-## Panel A: World map with authors' affiliations
-```{r}
-
-# Load world shapefile
-world <- ne_countries(scale = "medium", returnclass = "sf")
-
-# Load bibliometric data
-scopus <- biblio
-
-colnames(scopus)
-# Define functions for extraction
-extract_first_last <- function(author_list) {
-  authors <- strsplit(author_list, ";")[[1]]
-  c(trimws(authors[1]), trimws(authors[length(authors)]))
-}
-
-extract_affiliation <- function(affiliation_list) {
-  affiliations <- strsplit(affiliation_list, ";")[[1]]
-  c(trimws(affiliations[1]), trimws(affiliations[length(affiliations)]))
-}
-
-extract_country <- function(affiliation) {
-  tail(strsplit(affiliation, ",")[[1]], 1) %>% trimws()
-}
-
-# Define country name corrections
-country_mapping <- c(
-  "USA" = "United States of America",
-  "USA." = "United States of America",
-  "United States" = "United States of America",
-  "Russian Federation" = "Russia",
-  "Czech Republic" = "Czechia", 
-  "United Kingdom." = "United Kingdom"
+colours <- c(
+  ink = "#243746",
+  muted_ink = "#52636F",
+  paper = "#FBFAF8",
+  land = "#E3E6E4",
+  border = "#FBFAF8",
+  graticule = "#DBE2E6"
 )
 
-# Clean and recode meta-analysis data
-bibs <- scopus %>%
+base_size <- 12
+
+
+# Constituent countries of the UK, plus the spellings Scopus emits.
+uk_parts <- c("england", "scotland", "wales", "northern ireland", "uk",
+              "united kingdom", "united kingdom.")
+
+clean_country <- function(x) {
+  x <- str_trim(x)
+  x <- str_remove(x, "\\.$")
+  low <- str_to_lower(str_trim(x))
+  case_when(
+    low %in% uk_parts ~ "United Kingdom",
+    low %in% c("usa", "united states", "united states of america") ~ "United States",
+    low == "russian federation" ~ "Russia",
+    low == "czech republic" ~ "Czechia",
+    low == "viet nam" ~ "Vietnam",
+    TRUE ~ x
+  )
+}
+
+# Country sits in the last comma-separated slot of a Scopus affiliation string.
+country_of <- function(affiliation) {
+  map_chr(affiliation, ~ {
+    parts <- str_split(.x, ",")[[1]]
+    clean_country(parts[length(parts)])
+  })
+}
+```
+## Panel A: First-author affiliation countries
+
+```{r figure-3-panel-a}
+first_author_country <- biblio %>%
   mutate(
-    first_author = sapply(authors, \(x) extract_first_last(x)[1]),
-    last_author = sapply(authors, \(x) extract_first_last(x)[2]),
-    first_author_affiliation = sapply(`authors_with_affiliations`, \(x) extract_affiliation(x)[1]),
-    last_author_affiliation = sapply(`authors_with_affiliations`, \(x) extract_affiliation(x)[2]),
-    first_author_country = sapply(first_author_affiliation, extract_country),
-    last_author_country = sapply(last_author_affiliation, extract_country),
-    first_author_country = recode(first_author_country, !!!country_mapping)
-  )
+    first_affiliation = map_chr(
+      authors_with_affiliations,
+      ~ str_trim(str_split(.x, ";")[[1]][1])
+    ),
+    country = country_of(first_affiliation)
+  ) %>%
+  count(country, name = "n_first_authors")
 
+n_records <- nrow(biblio)
 
-# Count countries
-first_country_counts <- table(bibs$first_author_country) %>%
-  as.data.frame() %>%
-  rename(Country = Var1, First_counts = Freq)
+world <- ne_countries(scale = "medium", returnclass = "sf") %>%
+  filter(admin != "Antarctica")
 
-
-# Join counts to world map
-world_first <- world %>%
-  left_join(first_country_counts, by = c("name" = "Country"))
-
-
-# Plot a. (meta-analysis)
-fig4_a <- ggplot(world_first) +
-  geom_sf(aes(fill = First_counts), color = NA) +
-  scale_fill_paletteer_c("ggthemes::Purple", 
-                         na.value = "#D8D8D8FF",
-                         labels = number_format(accuracy = 1)) +#[AM: set the bar scale to display integers.]
-  labs(fill = "Number of first authors") + #[AM: added]
-  theme_void() +
-  theme(
-    legend.position = "bottom",
-    legend.title = element_text(size = 10),
-    legend.text = element_text(size = 10),
-  ) +
-  guides(fill = guide_colorbar(
-    title.position = "top",
-    barwidth = 15,
-    barheight = 0.5
-  ))
-
-fig4_a
-#ggsave(here("Figures/raw", "Figure_4_bibliomap.pdf"), width = 11, height = 10, dpi = 300)
-#ggsave(here("Figures/raw", "Figure_4_bibliomap.png"), width = 11, height = 10, dpi = 300)
-
-```
-
-
-
-## Panel B: Chord diagram of authors collaborations
-
-```{r}
-# Load bibliometric data
-dim(bib_data) 
-
-bib_data <- metaTagExtraction(bib_data, Field = "AU1_CO", sep = ";")
-bib_data <- metaTagExtraction(bib_data, Field = "AU_CO", sep = ";")
-dim(bib_data)
-
-# Generate collaboration network matrix (countries)
-NetMatrix2 <- biblioNetwork(bib_data, 
-                            analysis = "collaboration",
-                            network = "countries", 
-                            sep = ";")
-net_matrix2 <- as.matrix(NetMatrix2)
-
-# Clean country names
-net_matrix2[lower.tri(net_matrix2)] <- 0  # Remove lower triangle
-colnames(net_matrix2) <- str_to_title(colnames(net_matrix2))
-rownames(net_matrix2) <- str_to_title(rownames(net_matrix2))
-colnames(net_matrix2)[colnames(net_matrix2) == "Usa"] <- "USA"
-rownames(net_matrix2)[rownames(net_matrix2) == "Usa"] <- "USA"
-colnames(net_matrix2)[colnames(net_matrix2) == "United Kingdom"] <- "UK"
-rownames(net_matrix2)[rownames(net_matrix2) == "United Kingdom"] <- "UK"
-
-# Set circular layout
-country_order <- names(sort(rowSums(net_matrix2), decreasing = TRUE))
-net_matrix2_sorted <- net_matrix2[country_order, country_order]
-
-# Remapped Unicorn Pro Contrast (25 countries)
-cols <- c(
-  "UK"                 = "#6C5FC7", # indigo
-  "USA"                = "#91D3C5", # teal
-  "Canada"             = "#5D5D5D", # charcoal
-  "Australia"          = "#BCCF7F", # olive green
-  "Netherlands"        = "#A9C7E8", # steel blue
-  "Germany"            = "#C49ACF", # mauve
-  "Italy"              = "#B28A85", # clay rose
-  "Norway"             = "#7A8BD1", # periwinkle
-  "France"             = "#6BB6C9", # teal-gray
-  "Brazil"             = "#D6A9A5", # rosewood
-  "China"              = "#8573C1", # muted purple
-  "Spain"              = "#E8C1A8", # beige apricot
-  "New Zealand"        = "#D9E7A8", # sage yellow
-  "Denmark"            = "#E7D7A1", # muted gold
-  "Iran"               = "#E0E0D1", # warm gray
-  "Portugal"           = "#88A6D9", # dusty blue
-  "Saudi Arabia"       = "#9D7ED0", # violet
-  "Hong Kong"          = "#9FBBB0", # stone teal
-  "Japan"              = "#CC9999", # muted coral
-  "Malta"              = "#A6A6A6", # neutral gray
-  "Slovenia"           = "#8E72A9", # plum
-  "South Africa"       = "#B7E3D6", # pale aqua
-  "Sweden"             = "#E7D7A1", # gold (slightly brighter)
-  "Switzerland"        = "#BFA3D6", # lavender-gray
-  "Trinidad And Tobago"= "#D7BFAF"  # pale taupe
+# Natural Earth uses its own naming; align the few that differ from Scopus.
+ne_lookup <- c(
+  "United States of America" = "United States",
+  "United Kingdom" = "United Kingdom"
 )
 
-# Save as PDF
-pdf(here("Figures/raw", "Figure_4b_chorddiagram.pdf"), width = 12, height = 9)
+world_first <- world %>%
+  mutate(
+    match_name = recode(admin, !!!ne_lookup)
+  ) %>%
+  left_join(first_author_country, by = c("match_name" = "country"))
 
-# Plot chord diagram
-circos.clear()
-circos.par(track.margin = c(0.01, 0.01), gap.degree = 1.5)
+# Equal Earth: equal-area, so country sizes are proportionally honest, and it
+# keeps the rounded silhouette that reads better than a plate carree rectangle.
+crs_equal_earth <- "EPSG:8857"
 
-chordDiagram(net_matrix2_sorted,
-             annotationTrack = "grid",
-             annotationTrackHeight = c(0.04, 0.02),
-             preAllocateTracks = 1,
-             grid.col = cols)
-        
-circos.trackPlotRegion(track.index = 1, panel.fun = function(x, y) {
-                xlim <- get.cell.meta.data("xlim")
-                ylim <- get.cell.meta.data("ylim")
-                sector.name <- get.cell.meta.data("sector.index")
-                circos.text(mean(xlim), 
-                            ylim[1] + 0.3,
-                            sector.name,
-                            facing = "clockwise", 
-                            niceFacing = TRUE,
-                            adj = c(0, 0.5), 
-                            cex = 0.85)
-                circos.axis(h = "bottom", labels = FALSE, major.tick = FALSE)
-                            #labels.cex = 0.5)
-              }, 
-              bg.border = NA)
+world_ee <- st_transform(world_first, crs_equal_earth)
+graticule <- st_graticule(
+  lat = seq(-60, 80, 20),
+  lon = seq(-180, 180, 60)
+) %>%
+  st_transform(crs_equal_earth)
 
-dev.off()   # close PNG
+land_bbox <- st_bbox(world_ee)
+
+panel_a <- ggplot() +
+  geom_sf(data = graticule, colour = colours["graticule"], linewidth = 0.25) +
+  geom_sf(
+    data = world_ee,
+    aes(fill = n_first_authors),
+    colour = colours["border"],
+    linewidth = 0.12
+  ) +
+  scale_fill_stepsn(
+    colours = c("#EBD9E6", "#D3A8CB", "#B173A8", "#8A4A82", "#5F2C5B"),
+    na.value = colours["land"],
+    breaks = c(2, 4, 6, 8),
+    limits = c(0, 10),
+    name = "First-author records",
+    guide = guide_colorsteps(
+      title.position = "top",
+      barwidth = unit(190, "pt"),
+      barheight = unit(10, "pt"),
+      show.limits = FALSE
+    )
+  ) +
+  # Crop to the land extent: with Antarctica dropped, the full projection would
+  # leave a wide empty band of southern ocean.
+  coord_sf(
+    crs = crs_equal_earth,
+    xlim = land_bbox[c("xmin", "xmax")],
+    ylim = land_bbox[c("ymin", "ymax")],
+    expand = FALSE
+  ) +
+  labs(tag = "A") +
+  theme_void(base_size = base_size) +
+  theme(
+    plot.background = element_rect(fill = colours["paper"], colour = NA),
+    legend.position = "bottom",
+    legend.margin = margin(t = 2, b = 2),
+    legend.title = element_text(size = base_size - 0.5, colour = colours["muted_ink"]),
+    legend.text = element_text(size = base_size - 1, colour = colours["muted_ink"]),
+    plot.tag = element_text(face = "bold", size = base_size + 6, colour = colours["ink"]),
+    plot.tag.position = c(0, 1),
+    plot.margin = margin(6, 6, 2, 6)
+  )
 ```
+## Panel B: Country co-authorship chord diagram
 
+```{r figure-3-panel-b}
+# Every country credited on a record, one row per record x country.
+record_countries <- biblio %>%
+  mutate(record = row_number()) %>%
+  select(record, affiliations) %>%
+  separate_rows(affiliations, sep = ";") %>%
+  filter(str_trim(affiliations) != "") %>%
+  mutate(country = country_of(affiliations)) %>%
+  distinct(record, country)
+
+# Records per country drives which sectors are small enough to pool.
+records_per_country <- count(record_countries, country, name = "n_records")
+
+# --- Route 1: bibliometrix (the analysis used in Overview_figures.Rmd) --------
+build_edges_bibliometrix <- function() {
+  bib <- bibliometrix::convert2df(
+    here("Data", "bibliometric.bib"),
+    dbsource = "scopus",
+    format = "bibtex"
+  )
+  bib <- bibliometrix::metaTagExtraction(bib, Field = "AU_CO", sep = ";")
+  net <- bibliometrix::biblioNetwork(
+    bib,
+    analysis = "collaboration",
+    network = "countries",
+    sep = ";"
+  )
+  m <- as.matrix(net)
+  diag(m) <- 0
+  m[lower.tri(m)] <- 0
+  # bibliometrix returns upper-case country names.
+  dimnames(m) <- list(
+    clean_country(str_to_title(rownames(m))),
+    clean_country(str_to_title(colnames(m)))
+  )
+  as.data.frame(as.table(m)) %>%
+    set_names(c("country.x", "country.y", "n")) %>%
+    mutate(across(c(country.x, country.y), as.character)) %>%
+    filter(n > 0, country.x != country.y)
+}
+
+# --- Route 2: direct from Scopus affiliation strings -------------------------
+build_edges_direct <- function() {
+  record_countries %>%
+    inner_join(record_countries, by = "record", relationship = "many-to-many") %>%
+    filter(country.x < country.y) %>%
+    count(country.x, country.y, name = "n")
+}
+
+edges_raw <- if (USE_BIBLIOMETRIX) {
+  build_edges_bibliometrix()
+} else {
+  build_edges_direct()
+}
+
+# Countries credited on a single record are pooled into one "Other" sector; the
+# ring is otherwise dominated by hairline sectors carrying long labels.
+other_countries <- records_per_country %>%
+  filter(n_records == 1) %>%
+  pull(country) %>%
+  sort()
+
+other_label <- paste0("Other (", length(other_countries), ")")
+
+pool <- function(x) if_else(x %in% other_countries, other_label, x)
+
+edges <- edges_raw %>%
+  mutate(country.x = pool(country.x), country.y = pool(country.y)) %>%
+  # Re-sort each pair alphabetically so pooled duplicates merge cleanly.
+  mutate(
+    a = pmin(country.x, country.y),
+    b = pmax(country.x, country.y)
+  ) %>%
+  summarise(n = sum(n), .by = c(a, b)) %>%
+  rename(country.x = a, country.y = b)
+
+# Order sectors by total collaboration volume, with Other pinned to the end.
+country_strength <- bind_rows(
+  edges %>% select(country = country.x, n),
+  edges %>% select(country = country.y, n)
+) %>%
+  summarise(strength = sum(n), .by = country) %>%
+  arrange(country == other_label, desc(strength))
+
+chord_order <- country_strength$country
+
+# Shorter display labels keep the ring from being swamped by text.
+display_label <- function(x) {
+  recode(
+    x,
+    "United States" = "USA",
+    "United Kingdom" = "UK",
+    .default = x
+  )
+}
+
+adjacency <- edges %>%
+  rename(from = country.x, to = country.y) %>%
+  filter(from %in% chord_order, to %in% chord_order)
+
+# Palette: distinct hues for the high-volume sectors, muted for the long tail.
+sector_colours <- setNames(
+  colorRampPalette(
+    c("#6C5FC7", "#91D3C5", "#5D5D5D", "#BCCF7F", "#A9C7E8", "#C49ACF",
+      "#B28A85", "#7A8BD1", "#6BB6C9", "#D6A9A5", "#E8C1A8", "#9FBBB0")
+  )(length(chord_order)),
+  chord_order
+)
+
+draw_chord <- function() {
+  circos.clear()
+  circos.par(
+    track.margin = c(0.005, 0.005),
+    gap.degree = 2.2,
+    start.degree = 90,
+    points.overflow.warning = FALSE,
+    # Room for the outer labels so long names are not clipped.
+    canvas.xlim = c(-1.16, 1.16),
+    canvas.ylim = c(-1.16, 1.16)
+  )
+  chordDiagram(
+    adjacency,
+    order = chord_order,
+    grid.col = sector_colours,
+    transparency = 0.28,
+    annotationTrack = "grid",
+    annotationTrackHeight = mm_h(4),
+    preAllocateTracks = list(track.height = 0.17),
+    directional = 0,
+    link.sort = TRUE,
+    link.decreasing = TRUE
+  )
+  circos.trackPlotRegion(
+    track.index = 1,
+    bg.border = NA,
+    panel.fun = function(x, y) {
+      xlim <- get.cell.meta.data("xlim")
+      sector <- get.cell.meta.data("sector.index")
+      # Radial labels match the author-approved chord diagram.
+      circos.text(
+        mean(xlim), 0.86, display_label(sector),
+        facing = "clockwise",
+        niceFacing = TRUE,
+        adj = c(0, 0.5),
+        cex = 1.28,
+        col = "#243746"
+      )
+    }
+  )
+  circos.clear()
+}
+
+# Capture the base-graphics chord as a high-resolution raster grob. This keeps
+# the ring circular in patchwork without an additional conversion package.
+chord_png <- tempfile(fileext = ".png")
+grDevices::png(chord_png, width = 3000, height = 3000, res = 300, bg = colours["paper"])
+draw_chord()
+grDevices::dev.off()
+
+chord_grob <- grid::rasterGrob(png::readPNG(chord_png), interpolate = TRUE)
+unlink(chord_png)
+
+panel_b <- patchwork::wrap_elements(full = chord_grob, clip = FALSE) +
+  labs(tag = "B") +
+  theme(
+    plot.background = element_rect(fill = colours["paper"], colour = NA),
+    plot.tag = element_text(face = "bold", size = base_size + 6, colour = colours["ink"]),
+    plot.tag.position = c(0, 1),
+    plot.margin = margin(-12, 6, 2, 6)
+  )
+```
+## Assemble and save Figure 3
+
+```{r figure-3-assemble}
+figure_3 <- panel_a / panel_b +
+  plot_layout(heights = c(0.50, 1)) +
+  plot_annotation(
+    theme = theme(
+      plot.background = element_rect(fill = colours["paper"], colour = NA),
+      plot.margin = margin(8, 8, 8, 8)
+    )
+  )
+
+ggsave(
+  here("Figures", "raw", "Figure_3_bibliometric_map_chord.pdf"),
+  figure_3,
+  width = 10,
+  height = 15,
+  units = "in"
+)
+
+ggsave(
+  here("Figures", "raw", "Figure_3_bibliometric_map_chord.png"),
+  figure_3,
+  width = 10,
+  height = 15,
+  units = "in",
+  dpi = 300
+)
+
+message("network source: ", if (USE_BIBLIOMETRIX) "bibliometrix" else "direct",
+        " | records: ", n_records,
+        " | first-author countries: ", nrow(first_author_country),
+        " | chord sectors: ", length(chord_order),
+        " | edges: ", nrow(adjacency))
+
+# For the figure caption: name the countries pooled into the Other sector.
+message("\n", other_label, " comprises: ",
+        paste(other_countries, collapse = ", "), ".")
+
+figure_3
+```
 
 #¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
 
-# Figure 5: Policy analysis, alluvial plot top 10
+# Figure 4: Policy analysis, alluvial plot top 10
 
 ```{r}
 # Call data
-dat <- dat_policy |> 
+dat <- dat_policy |>
   select(policy_topic, ecological_context, policy_document_type)
 
 # Count combinations
-dat_alluvial <- dat |> 
-  group_by(policy_topic, ecological_context, policy_document_type) |> 
+dat_alluvial <- dat |>
+  group_by(policy_topic, ecological_context, policy_document_type) |>
   summarise(Freq = n(), .groups = "drop")
 
 # ---- Keep only top 5 most common flows ----
-top5_flows <- dat_alluvial |> 
-  arrange(desc(Freq)) |> 
+top5_flows <- dat_alluvial |>
+  arrange(desc(Freq)) |>
   slice_head(n = 10)
 
-dat_alluvial2 <- dat_alluvial |> 
+dat_alluvial2 <- dat_alluvial |>
   semi_join(top5_flows,
-            by = c("policy_topic", "ecological_context", "policy_document_type")) |> 
+            by = c("policy_topic", "ecological_context", "policy_document_type")) |>
   mutate(
     policy_topic        = fct_reorder(as.factor(policy_topic), Freq, .fun = sum, .desc = TRUE),
     ecological_context  = fct_reorder(as.factor(ecological_context), Freq, .fun = sum, .desc = TRUE),
@@ -949,7 +960,7 @@ unicorn_pastel <- c(
   "Intergovernmental\npolicy" = "#FFB5AA"
 )
 # Plot
-fig5 <- ggplot(dat_alluvial2,
+figure_4 <- ggplot(dat_alluvial2,
                        aes(axis1 = policy_document_type,
                            axis2 = ecological_context,
                            axis3 = policy_topic,
@@ -965,7 +976,7 @@ fig5 <- ggplot(dat_alluvial2,
   geom_alluvium(aes(fill = policy_document_type),
                 width = 1/12, alpha = 0.6) +
   geom_stratum(aes(fill = after_stat(stratum)), color = "white", linewidth = 1.2) +
-  geom_text(stat = "stratum", 
+  geom_text(stat = "stratum",
             aes(label = after_stat(stratum)),
             size = 4) +
   scale_fill_manual(values = unicorn_pastel, na.value = "#f0f0f0") +
@@ -978,24 +989,24 @@ fig5 <- ggplot(dat_alluvial2,
     axis.text.y  = element_blank(),
     axis.ticks.y = element_blank(),
     axis.text.x.top = element_text(face = "bold", size = 13, margin = margin(b = 10)),
-    
+
     # Panel and grid tweaks
     panel.grid = element_blank(),   # remove gridlines
     panel.border = element_blank(),
     panel.background = element_rect(fill = "white", colour = NA),
-    
+
     # Overall text and title
     plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
     plot.subtitle = element_text(size = 12, hjust = 0.5, colour = "grey30"),
     plot.caption = element_text(size = 10, colour = "grey40", hjust = 1),
-    
+
     # Strata labels spacing
     plot.margin = margin(10, 10, 10, 10)
   )
 
-fig5
-#ggsave(here("Figures/raw", "Figure_5_alluvialplot.pdf"), width = 12, height = 9, dpi= 300)
-#ggsave(here("Figures/raw", "Figure_5_alluvialplot.png"), width = 12, height = 9, dpi = 300)
+figure_4
+#ggsave(here("Figures/raw", "Figure_4_scope_policy_documents_citing_syntheses.pdf"), width = 12, height = 9, dpi = 300)
+#ggsave(here("Figures", "Figure_4_scope_policy_documents_citing_syntheses.png"), width = 12, height = 9, dpi = 300)
 
 
 
@@ -1006,22 +1017,22 @@ fig5
 
 #¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
 
-# Figure 6: CEESAT scores: CEESAT question scores (all syntheses) 
+# Figure 5: CEESAT scores: CEESAT question scores (all syntheses)
 
 ```{r}
 # Labels:
-labels <- structure(list(q = c("1.1", "2.1", "3.1", "3.2", "4.1", "4.2", 
-"4.3", "5.1", "5.2", "6.1", "6.2", "6.3", "7.1", "7.2", "7.3", 
-"8.1"), label = c("1.1 Research question and criteria", 
-"2.1 A priori protocol", "3.1 Systematic search approach", 
-"3.2 Search comprehensiveness", "4.1 Defined eligibility criteria", 
-"4.2 Consistent eligibility criteria", 
-"4.3 Reported eligibility decisions", "5.1 Critical appraisal", 
-"5.2 Critical appraisal cross-check", 
-"6.1 Data extraction method", "6.2 Data availability?", 
-"6.3 Data extraction cross-check", 
-"7.1 Choice of synthesis approach", "7.2 Appropiate meta-analysis", 
-"7.3 Variability investigation", 
+labels <- structure(list(q = c("1.1", "2.1", "3.1", "3.2", "4.1", "4.2",
+"4.3", "5.1", "5.2", "6.1", "6.2", "6.3", "7.1", "7.2", "7.3",
+"8.1"), label = c("1.1 Research question and criteria",
+"2.1 A priori protocol", "3.1 Systematic search approach",
+"3.2 Search comprehensiveness", "4.1 Defined eligibility criteria",
+"4.2 Consistent eligibility criteria",
+"4.3 Reported eligibility decisions", "5.1 Critical appraisal",
+"5.2 Critical appraisal cross-check",
+"6.1 Data extraction method", "6.2 Data availability?",
+"6.3 Data extraction cross-check",
+"7.1 Choice of synthesis approach", "7.2 Appropiate meta-analysis",
+"7.3 Variability investigation",
 "8.1 Synthesis limitations"
 )), row.names = c(NA, -16L), class = c("tbl_df", "tbl", "data.frame"
 ))
@@ -1056,7 +1067,7 @@ ceesat_for_plot <- ceesat_long %>%
   )
 
 # Plot
-fig6 <- ggplot(ceesat_for_plot, aes(x = fct_rev(label), y = percent, fill = value)) +
+figure_5 <- ggplot(ceesat_for_plot, aes(x = fct_rev(label), y = percent, fill = value)) +
   geom_col(width = 0.8) +
   geom_text(
     aes(label = n),
@@ -1103,9 +1114,9 @@ fig6 <- ggplot(ceesat_for_plot, aes(x = fct_rev(label), y = percent, fill = valu
 
 
 
-fig6 
-ggsave(here("Figures/raw", "Figure_6_CEESAT.pdf"), width = 15, height = 9, dpi= 300)
-ggsave(here("Figures/raw", "Figure_6_CEESAT.png"), width = 15, height = 9, dpi = 300)
+figure_5
+ggsave(here("Figures/raw", "Figure_5_CEESAT_assessment_syntheses.pdf"), width = 15, height = 9, dpi = 300)
+ggsave(here("Figures", "Figure_5_CEESAT_assessment_syntheses.png"), width = 15, height = 9, dpi = 300)
 
 ```
 
@@ -1154,58 +1165,390 @@ main_analysis
 # Supplementary figures
 #¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
 
-### Figure S3: Academic citation count and the three most cited syntheses
-```{r}
-# 1. Create empty label column
-biblio$label <- NA
+# Figure S3: Synthesis characteristics and content mapping
 
-# 2. Assign labels to the three top-cited papers
-biblio$label[grepl("Benítez-López", biblio$authors) & biblio$year == 2010] <- "Benítez-López et al., 2010"
-biblio$label[grepl("Shannon",       biblio$authors) & biblio$year == 2016] <- "Shannon et al., 2016"
-biblio$label[grepl("Duarte",        biblio$authors) & biblio$year == 2021] <- "Duarte et al., 2021"
+## Panel A: Review type by publication year
 
-# 3. Make the citation scatterplot
-fig_S3 <- ggplot(biblio, aes(x = year, y = cited_by)) +
-  geom_jitter(size = 4.3, alpha = 0.25, color = "#8074A8FF", width = 0.3, height = 0) +
-  geom_point(data = subset(biblio, !is.na(label)), 
-             aes(x = year, y = cited_by), 
-             color = "#8074A8FF", size = 4.3) +
-  geom_label(data = subset(biblio, !is.na(label)), 
-             aes(label = label), 
-             hjust = -0.1, vjust = 0.4, size = 3.5,
-             fill = "white", color = "black"
-  ) +
-   labs(
-     x = NULL,
-    y = "Academic citation count"#,
-  ) +
-  scale_x_continuous(breaks = seq(from = min(biblio$year), 
-                                  to = max(biblio$year), by = 1)
-                     )+
-  theme_minimal(base_size = 13) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "inside",
-    legend.position.inside = c(.15, .75),
-    legend.text = element_text(size = 9),
-    legend.title = element_blank(),
-    panel.grid = element_blank()
-    
+```{r figure-s3-panel-a}
+review_type_counts <- map %>%
+  select(study_id, year, review_type) %>%
+  distinct() %>%
+  count(year, review_type, name = "paper_count") %>%
+  complete(
+    year = seq(min(map$year, na.rm = TRUE), max(map$year, na.rm = TRUE)),
+    review_type = c("Systematic review", "Meta-analysis", "Systematic map"),
+    fill = list(paper_count = 0)
+  ) %>%
+  mutate(
+    review_type = factor(
+      review_type,
+      levels = c("Systematic review", "Meta-analysis", "Systematic map")
+    )
   )
-  
- 
- 
-# 4. Print plot
-fig_S3
 
-#Save
-#ggsave(here("Figures/raw", "Figure_S3_academic_citatation_count.pdf"), width = 10, height = 7, dpi = 300)
-#ggsave(here("Figures/raw", "Figure_S3_academic_citation_count.png"), width = 16, height = 10, dpi= 300)  
+figS3_a <- ggplot(
+  review_type_counts,
+  aes(x = year, y = paper_count, fill = review_type)
+) +
+  geom_col(width = 0.7) +
+  geom_text(
+    data = filter(review_type_counts, paper_count > 0),
+    aes(label = paper_count),
+    position = position_stack(vjust = 0.5),
+    size = 4,
+    fontface = "bold"
+  ) +
+  scale_fill_manual(
+    name = NULL,
+    values = c(
+      "Systematic review" = "#C6C1F0FF",
+      "Meta-analysis" = "#F498B6FF",
+      "Systematic map" = "#70C1BFFF"
+    )
+  ) +
+  scale_x_continuous(
+    breaks = seq(min(review_type_counts$year), max(review_type_counts$year), 1)
+  ) +
+  scale_y_continuous(limits = c(0, 12), breaks = seq(0, 12, 2)) +
+  labs(x = NULL, y = "Number of syntheses", tag = "A") +
+  theme_minimal(base_size = 13) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "inside",
+    legend.position.inside = c(0.18, 0.78),
+    panel.grid = element_blank()
+  )
 
+figS3_a
+```
+
+## Panel B: Environment average per paper
+
+```{r figure-s3-panel-b}
+# Average number of environment types per paper
+# sum(env_counts$paper_count)/50
+# 1.56
+
+# 1. Process ecosystem categories
+env <- map %>%
+  select(study_id, ecosystem_type) %>%
+  mutate(ecosystem_type = str_split(ecosystem_type, ",\\s*")) %>%
+  unnest(ecosystem_type) %>%
+  mutate(ecosystem_type = str_trim(ecosystem_type)) %>%
+  filter(!is.na(ecosystem_type), ecosystem_type != "") %>%
+  distinct(study_id, ecosystem_type)
+
+# 2. Count syntheses per ecosystem category
+env_counts <- env %>%
+  count(ecosystem_type, name = "paper_count") %>%
+  arrange(-paper_count) %>%
+  mutate(ecosystem_type = fct_reorder(ecosystem_type, paper_count))
+
+# 3. Calculate automatic label
+n_syntheses <- n_distinct(map$study_id)
+env_total_assignments <- sum(env_counts$paper_count)
+env_mean_categories <- env_total_assignments / n_syntheses
+
+env_label <- paste0(
+  "Mean ecosystem categories per synthesis:\n",
+  sprintf("%.2f", env_mean_categories),
+  " (", env_total_assignments,
+  " category assignments\nacross ",
+  n_syntheses,
+  " syntheses)"
+)
+
+# 4. Show summary statistics
+env_counts %>%
+  mutate(percentage = (paper_count / n_syntheses) * 100) %>%
+  print(n = Inf)
+
+# 5. UpSet plot data
+dat_upset_env <- env |>
+  mutate(value = 1) |>
+  pivot_wider(
+    id_cols = study_id,
+    names_from = ecosystem_type,
+    values_from = value,
+    values_fill = 0
+  )
+
+# 6. Plotting
+figS3_b <- upset(
+  dat_upset_env,
+  intersect = colnames(dat_upset_env)[-1],
+  name = "",
+  base_annotations = list(
+    "Intersection size" = intersection_size(
+      mapping = aes(fill = 'bars_color')
+    ) +
+      annotate(
+        geom = "text", x = Inf, y = Inf,
+        label = env_label,
+        vjust = 1, hjust = 1
+      ) +
+      ylab("Number of syntheses") +
+      scale_fill_manual(
+        values = c('bars_color' = '#7370b3'),
+        guide = 'none'
+      ) +
+      scale_y_continuous(
+        limits = c(0, 20),
+        breaks = seq(0, 20, 4)
+      ) +
+      labs(tag = "B") +
+      theme_minimal(base_size = 14) +
+      theme(
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x  = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.y = element_blank()
+      )
+  ),
+  matrix = intersection_matrix(
+    geom = geom_point(shape = 16, size = 1.8)
+  ),
+  set_sizes = FALSE,
+  min_size = 0
+)
+
+figS3_b
 
 ```
 
-#¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
-# Figure S4- Keywords
+
+## Panel C: Noise source average per paper
+
+```{r figure-s3-panel-c}
+# Average number of noise sources per paper
+# sum(noise_counts$paper_count)/50
+# 2.84
+
+# 1. Process noise-source categories
+noise <- map %>%
+  select(study_id, noise_source) %>%
+  mutate(noise_source = str_split(noise_source, ",\\s*")) %>%
+  unnest(noise_source) %>%
+  mutate(noise_source = str_trim(noise_source)) %>%
+  filter(!is.na(noise_source), noise_source != "") %>%
+  distinct(study_id, noise_source)
+
+# 2. Count syntheses per noise-source category
+noise_counts <- noise %>%
+  count(noise_source, name = "paper_count") %>%
+  arrange(-paper_count) %>%
+  mutate(noise_source = fct_reorder(noise_source, paper_count))
+
+# 3. Calculate automatic label
+n_syntheses <- n_distinct(map$study_id)
+
+noise_total_assignments <- sum(noise_counts$paper_count)
+noise_mean_categories <- noise_total_assignments / n_syntheses
+
+noise_label <- paste0(
+  "Mean noise-source categories per synthesis:\n",
+  sprintf("%.2f", noise_mean_categories),
+  " (", noise_total_assignments,
+  " category assignments\nacross ",
+  n_syntheses,
+  " syntheses)"
+)
+
+# 4. Show summary statistics
+noise_counts %>%
+  mutate(percentage = (paper_count / n_syntheses) * 100) %>%
+  print(n = Inf)
+
+# 5. UpSet plot data
+dat_upset_noise <- noise |>
+  mutate(value = 1) |>
+  pivot_wider(
+    id_cols = study_id,
+    names_from = noise_source,
+    values_from = value,
+    values_fill = 0
+  )
+
+# 6. Plotting
+figS3_c <- upset(
+  dat_upset_noise,
+  intersect = colnames(dat_upset_noise)[-1],
+  name = "",
+  base_annotations = list(
+    "Intersection size" = intersection_size(
+      mapping = aes(fill = 'bars_color')
+    ) +
+      annotate(
+        geom = "text", x = Inf, y = Inf,
+        label = noise_label,
+        vjust = 1, hjust = 1
+      ) +
+      ylab("Number of syntheses") +
+      scale_fill_manual(
+        values = c('bars_color' = '#7370b3'),
+        guide = 'none'
+      ) +
+      scale_y_continuous(
+        limits = c(0, 8),
+        breaks = seq(0, 8, 2)
+      ) +
+      labs(tag = "C") +
+      theme_minimal(base_size = 14) +
+      theme(
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x  = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.y = element_blank()
+      )
+  ),
+  matrix = intersection_matrix(
+    geom = geom_point(shape = 16, size = 1.8)
+  ),
+  set_sizes = FALSE,
+  min_size = 0
+)
+
+figS3_c
+
+```
+## Panel D. Outcome average per paper:
+
+```{r figure-s3-panel-d}
+# Average number of outcome categories per paper
+# sum(outcome_counts$paper_count)/50
+# 2.78
+
+# 1. Process outcome categories
+outcomes <- map %>%
+  select(study_id, outcome_category) %>%
+  mutate(outcome_category = str_split(outcome_category, ",\\s*")) %>%
+  unnest(outcome_category) %>%
+  mutate(outcome_category = str_trim(outcome_category)) %>%
+  filter(!is.na(outcome_category), outcome_category != "") %>%
+  distinct(study_id, outcome_category)
+
+# 2. Count syntheses per outcome category
+outcome_counts <- outcomes %>%
+  count(outcome_category, name = "paper_count") %>%
+  arrange(-paper_count) %>%
+  mutate(outcome_category = fct_reorder(outcome_category, paper_count))
+
+# 3. Calculate automatic label
+n_syntheses <- n_distinct(map$study_id)
+
+outcome_total_assignments <- sum(outcome_counts$paper_count)
+outcome_mean_categories <- outcome_total_assignments / n_syntheses
+
+outcome_label <- paste0(
+  "Mean outcome categories per synthesis:\n",
+  sprintf("%.2f", outcome_mean_categories),
+  " (", outcome_total_assignments,
+  " category assignments\nacross ",
+  n_syntheses,
+  " syntheses)"
+)
+
+# 4. Show summary statistics
+outcome_counts %>%
+  mutate(percentage = (paper_count / n_syntheses) * 100) %>%
+  print(n = Inf)
+
+# 5. UpSet plot data
+dat_upset_outcomes <- outcomes |>
+  mutate(value = 1) |>
+  pivot_wider(
+    id_cols = study_id,
+    names_from = outcome_category,
+    values_from = value,
+    values_fill = 0
+  )
+
+# 6. Plotting
+figS3_d <- upset(
+  dat_upset_outcomes,
+  intersect = colnames(dat_upset_outcomes)[-1],
+  name = "",
+
+  base_annotations = list(
+    "Intersection size" = intersection_size(
+      mapping = aes(fill = 'bars_color')
+    ) +
+      annotate(
+        geom = "text", x = Inf, y = Inf,
+        label = outcome_label,
+        vjust = 1, hjust = 1
+      ) +
+      ylab("Number of syntheses") +
+      scale_fill_manual(
+        values = c('bars_color' = '#7370b3'),
+        guide = 'none'
+      ) +
+      scale_y_continuous(
+        limits = c(0, 10),
+        breaks = seq(0, 10, 2)
+      ) +
+      labs(tag = "D") +
+      theme_minimal(base_size = 14) +
+      theme(
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x  = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.y = element_blank()
+      )
+  ),
+
+  matrix = intersection_matrix(
+    geom = geom_point(shape = 16, size = 1.8)
+  ),
+
+  set_sizes = FALSE,
+  min_size = 0
+)
+
+figS3_d
+
+```
+
+## Patchwork plots—Figure S3
+```{r figure-s3-assemble}
+# Create panel pairs for better layout
+
+figS3_ab <- (figS3_a | figS3_b) +
+  plot_layout(nrow = 1) &
+  theme(plot.tag = element_text(size = 14, face = "bold"))
+
+figS3_cd <- (figS3_c | figS3_d) +
+  plot_layout(nrow = 1) &
+  theme(plot.tag = element_text(size = 14, face = "bold"))
+
+
+# Create figure
+figure_s3 <- figS3_ab / figS3_cd +
+  plot_layout(nrow = 2) &
+  theme(plot.tag = element_text(size = 14, face = "bold"))
+
+
+# Save figure with all panels
+figure_s3
+ggsave(here("Figures/raw", "figure_s3.pdf"), figure_s3, width = 15, height = 10, dpi = 300)
+ggsave(here("Figures/raw", "figure_s3.png"), figure_s3, width = 15, height = 10, dpi = 300)
+
+```
+
+
+#¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
+
+
+# Figure S4: Keywords
 ## Panel A: keyword bargraph
 ```{r}
 # ---- Parameters ----
@@ -1223,7 +1566,7 @@ synonyms <- c(
   "Meta Analysis"     = "Meta-Analysis",
   "Meta Analyses"     = "Meta-Analysis",
   "Literature Review" = "Review",
-  
+
   # Fish variants
   "Fishes"            = "Fish",
   "Fishing"            = "Fishery",
@@ -1234,7 +1577,7 @@ synonyms <- c(
   "Pisces"            = "Fish",
   "Aquatic Organisms" = "Aquatic Species",
   "Aquatic Species" = "Aquatic Species",
-  
+
   # Marine environment
   "Marine Soundscape" = "Marine",
   "Marine" = "Marine",
@@ -1248,21 +1591,21 @@ synonyms <- c(
   "Vessels" = "Marine Vessel",
   "Ship" = "Marine Vessel",
   "Shipping" = "Marine Vessel",
-  
-  
-  
+
+
+
   # Mammal variants
   "Mammals"           = "Mammal",
   "Mammalia"          = "Mammal",
-  
+
   # Bird variants
   "Birds"             = "Bird",
   "Aves"              = "Bird",
-  
+
   # Invertebrate variants
   "Invertebrates"     = "Invertebrate",
   "Invertebrata"      = "Invertebrate",
-  
+
   # Animal variants
   "Animal"            = "Animals",
   "Fauna"            = "Animals",
@@ -1274,27 +1617,27 @@ synonyms <- c(
   "Behavioural"     = "Behaviour",
   "Behavior"  = "Behaviour",
   "Behavioral"  = "Behaviour",
-  
-  
+
+
   # Human variants
   "Humans"            = "Human",
-  
+
   # Cetacean variants
   "Cetacea"           = "Cetaceans",
   "Cetacean"          = "Cetaceans",
-  
+
   # Whale variants
   "Whales"            = "Whale",
   "Beluga Whales"     = "Beluga Whale",
   "Bowhead Whales"    = "Bowhead Whale",
-  
+
   # Dolphin variants
   "Dolphins"          = "Dolphin",
-  
+
   # Noise variants
   "Noise Impact"      = "Noise",
   "Noise-Induced Stress" = "Stress",
-  
+
   # Anthropogenic noise variants
   "Anthrophony"       = "Anthropophony",
   "Anthropogenic Sounds" = "Anthropogenic Sound",
@@ -1304,8 +1647,8 @@ synonyms <- c(
   "Human Disturbance" = "Human Disturbance",
   "Human Activities" = "Human Activity",
   "Human Activity" = "Human Activity",
-  
-  
+
+
   # Pollution variants
   "Sound Pollution"   = "Noise Pollution",
   "Acoustic Pollution"= "Noise Pollution",
@@ -1313,21 +1656,21 @@ synonyms <- c(
   "Contaminación Sonora"    = "Noise Pollution",
   "声污染"                 = "Noise Pollution",
   "噪音污染"                = "Noise Pollution",
-  
+
   # Urbanization variants
   "Urbanización"      = "Urbanization",
   "城市化"              = "Urbanization",
-  
+
   # Vertebrate variants
   "Vertebrates"       = "Vertebrate",
   "Vertebrata"        = "Vertebrate",
-  
+
   # Review variants
   "Systematic Maps"   = "Systematic Map",
   "Systematic Literature Review" = "Systematic Review",
   "Scoping Review"    = "Scoping Review",
   "Review"            = "Review",
-  
+
   # Risk variants
   "Risks Assessments" = "Risk Assessment",
   "Risk Evaluation"   = "Risk Assessment",
@@ -1359,7 +1702,7 @@ synonyms <- c(
 dt.long <- dt.long %>%
   mutate(value = str_to_title(value)) %>%
   mutate(value = trimws(value)) %>%
-# Apply synonyms dictionary 
+# Apply synonyms dictionary
   mutate(value = recode(value, !!!synonyms)) %>%
 # drop NA
   filter(!is.na(value) & value != "")
@@ -1395,7 +1738,7 @@ keyword.freq$value <- factor(keyword.freq$value,
                              levels = rev(keyword.freq$value))
 
 # Plot
-fig_S4A <- ggplot(data = keyword.freq[1:20, ],
+figS4_a <- ggplot(data = keyword.freq[1:20, ],
                     aes(x = n, y = value, fill = n))+
   geom_col()+
   scale_fill_gradient(low = "#B4D8E4", high = "#00425E")+
@@ -1409,14 +1752,14 @@ fig_S4A <- ggplot(data = keyword.freq[1:20, ],
         panel.background = element_blank(),
         axis.title.y = element_blank(),   # remove x axis title
         #axis.text.y  = element_blank(),   # remove x axis text
-        axis.ticks.x = element_blank() 
+        axis.ticks.x = element_blank()
       )
 
-fig_S4A
+figS4_a
 
 #Save
-#ggsave(here("Figures/raw", "Figure_S4A_Keywords.pdf"), width = 12, height = 8, dpi= 300)
-#ggsave(here("Figures/raw", "Figure_S4A_Keyords.png"), width = 12, height = 8, dpi= 300)
+#ggsave(here("Figures/raw", "Figure_S4A_keywords.pdf"), width = 12, height = 8, dpi = 300)
+#ggsave(here("Figures/raw", "Figure_S4A_keywords.png"), width = 12, height = 8, dpi = 300)
 
 ```
 ## Panel B - Cloud map
@@ -1429,23 +1772,156 @@ pal <- paletteer::paletteer_d("ggthemes::Purple_Pink_Gray")
 pal <- as.character(pal)
 
 # Word map
-fig_S4B <- wordcloud2(keyword.freq, 
-                      size = 1, 
-                      color = pal, 
+figS4_b <- wordcloud2(keyword.freq,
+                      size = 1,
+                      color = pal,
                       backgroundColor = "white",
                       shape = "rectangle"
 )
 
 # Show image-take a screenshot or export as png
-fig_S4B
+figS4_b
 ```
 
 #¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
 
-## Figure S5: Policy citation publication year of the REVIEW and the total policy citation
+# Figure S5: Academic citation count and the three most cited syntheses
+```{r}
+# 1. Create empty label column
+biblio$label <- NA
+
+# 2. Assign labels to the three top-cited papers
+biblio$label[grepl("Benítez-López", biblio$authors) & biblio$year == 2010] <- "Benítez-López et al., 2010"
+biblio$label[grepl("Shannon",       biblio$authors) & biblio$year == 2016] <- "Shannon et al., 2016"
+biblio$label[grepl("Duarte",        biblio$authors) & biblio$year == 2021] <- "Duarte et al., 2021"
+
+# 3. Make the citation scatterplot
+figS5 <- ggplot(biblio, aes(x = year, y = cited_by)) +
+  geom_jitter(size = 4.3, alpha = 0.25, color = "#8074A8FF", width = 0.3, height = 0) +
+  geom_point(data = subset(biblio, !is.na(label)),
+             aes(x = year, y = cited_by),
+             color = "#8074A8FF", size = 4.3) +
+  geom_label(data = subset(biblio, !is.na(label)),
+             aes(label = label),
+             hjust = -0.1, vjust = 0.4, size = 3.5,
+             fill = "white", color = "black"
+  ) +
+   labs(
+     x = NULL,
+    y = "Academic citation count"#,
+  ) +
+  scale_x_continuous(breaks = seq(from = min(biblio$year),
+                                  to = max(biblio$year), by = 1)
+                     )+
+  theme_minimal(base_size = 13) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "inside",
+    legend.position.inside = c(.15, .75),
+    legend.text = element_text(size = 9),
+    legend.title = element_blank(),
+    panel.grid = element_blank()
+
+  )
+
+
+
+# 4. Print plot
+figS5
+
+#Save
+#ggsave(here("Figures/raw", "Figure_S5_academic_citation_count.pdf"), width = 10, height = 7, dpi = 300)
+#ggsave(here("Figures/raw", "Figure_S5_academic_citation_count.png"), width = 16, height = 10, dpi= 300)
+
+
+```
+
+#¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
+# Figure S6: Policy analysis, alluvial plot all variables
+
+```{r}
+# Alluvial plot with consistent pastel colors by Document Type ----
+dat <- dat_policy |>
+  select(policy_topic, ecological_context, policy_document_type)
+
+dat_alluvial <- dat |>
+  group_by(policy_topic, ecological_context, policy_document_type) |>
+  summarise(Freq = n(), .groups = "drop")
+
+# Prefix axis labels for uniqueness and reorder by frequency
+dat_alluvial2 <- dat_alluvial |>
+  mutate(
+    policy_topic        = fct_reorder(as.factor(policy_topic), Freq, .fun = sum, .desc = TRUE),
+    ecological_context  = fct_reorder(as.factor(ecological_context), Freq, .fun = sum, .desc = TRUE),
+    policy_document_type = fct_reorder(as.factor(policy_document_type), Freq, .fun = sum, .desc = TRUE)
+  ) |>
+  # 🔑 Wrap long labels in Document type only
+  mutate(
+    policy_document_type = fct_relabel(policy_document_type, ~ str_replace_all(.x,
+                                                                      c("Government policy"        = "Government\npolicy",
+                                                                        "Regulatory Submission"    = "Regulatory\nSubmission",
+                                                                        "Intergovernmental policy" = "Intergovernmental\npolicy")))
+  )
+
+
+# Unicorn pastel palette (keys must match new labels)
+unicorn_pastel <- c(
+  "Government\npolicy"        = "#D9BDE2",
+  "Regulatory\nSubmission"    = "#BEECE0",
+  "Intergovernmental\npolicy" = "#FFB5AA",
+  "NGO report"                = "#B7D9EB",
+  "Think Tank"                = "#D6D6F8",
+  "Academic advisory"        = "#FFE3A3",
+  "Other document"           = "#B6E06E"
+)
+
+# ---- Plot ----
+figS6 <- ggplot(dat_alluvial2,
+                       aes(axis1 = policy_document_type,
+                           axis2 = ecological_context,
+                           axis3 = policy_topic,
+                           y = Freq)
+) +
+  scale_x_discrete(
+    limits = c("policy_document_type", "ecological_context", "policy_topic"),
+    labels = c("Document type", "Ecological context", "Policy topic"),
+    position = "top",
+    expand = c(.05, .05)
+  ) +
+ geom_alluvium(aes(fill = policy_document_type),
+                width = 1/12, alpha = 0.8, knot.pos = 0.4) +
+  geom_stratum(aes(fill = after_stat(stratum)),
+               color = "white", linewidth = 1.2, width = 0.2) +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum)), size = 4) +
+  scale_fill_manual(values = unicorn_pastel, na.value = "#f0f0f0") +
+
+  theme_minimal(base_size = 14) +
+  labs(y = "Count of papers", x = NULL) +
+  theme(
+    legend.position = "none",
+    axis.title.y = element_blank(),
+    axis.text.y  = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.text.x.top = element_text(face = "bold", size = 13, margin = margin(b = 10)),
+    panel.grid = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_rect(fill = "white", colour = NA),
+    plot.margin = margin(10, 10, 10, 10)
+  )
+
+
+figS6
+#ggsave(here("Figures/raw", "Figure_S6_alluvialplot.pdf"), width = 10, height = 10, dpi= 300)
+#ggsave(here("Figures/raw", "Figure_S6_alluvialplot.png"), width = 10, height = 10, dpi = 300)
+
+```
+
+
+
+#¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
+# Figure S7: Policy-citation counts by synthesis publication year
 ```{r}
 # filter by policy cited or not
-pol_fil <- pol_ci %>% 
+pol_fil <- pol_ci %>%
   filter(policy_cited == "Yes")
 
 colnames(pol_fil)
@@ -1461,13 +1937,13 @@ pol_cit <- pol_fil %>%
 
 
 # 4. Make the citation scatterplot
-fig_S5 <- ggplot(pol_cit, aes(x = year, y = unique_policy_citations)) +
+figS7 <- ggplot(pol_cit, aes(x = year, y = unique_policy_citations)) +
   geom_jitter(size = 4.3, alpha = 0.25, color = "#8074A8FF", width = 0.3, height = 0) +
-  geom_point(data = subset(pol_cit, !is.na(label)), 
-             aes(x = year, y = unique_policy_citations), 
+  geom_point(data = subset(pol_cit, !is.na(label)),
+             aes(x = year, y = unique_policy_citations),
              color = "#8074A8FF", size = 4.3) +
-  geom_label(data = subset(pol_cit, !is.na(label)), 
-             aes(label = label), 
+  geom_label(data = subset(pol_cit, !is.na(label)),
+             aes(label = label),
              hjust = -0.1, vjust = 0.4, size = 3.5,
              fill = "white", color = "black"
   ) +
@@ -1475,7 +1951,7 @@ fig_S5 <- ggplot(pol_cit, aes(x = year, y = unique_policy_citations)) +
      x = NULL,
     y = "Policy documents citing syntheses"#,
   ) +
-  scale_x_continuous(breaks = seq(from = min(pol_cit$year), 
+  scale_x_continuous(breaks = seq(from = min(pol_cit$year),
                                   to = max(pol_cit$year), by = 1)
                      )+
   theme_minimal(base_size = 13) +
@@ -1485,21 +1961,21 @@ fig_S5 <- ggplot(pol_cit, aes(x = year, y = unique_policy_citations)) +
     legend.text = element_text(size = 9),
     legend.title = element_blank(),
     panel.grid = element_blank()
-    
+
   )
-  
- 
- 
+
+
+
 # 5. Print plot
-fig_S5
+figS7
 
 #Save
-ggsave(here("Figures/raw", "Figure_S5_policyciting.pdf"), width = 10, height = 7, dpi = 300)
-ggsave(here("Figures/raw", "Figure_S5_policyciting.png"), width = 10, height = 7, dpi = 300)
+ggsave(here("Figures/raw", "Figure_S7_policyciting.pdf"), width = 10, height = 7, dpi = 300)
+ggsave(here("Figures/raw", "Figure_S7_policyciting.png"), width = 10, height = 7, dpi = 300)
 ```
 #¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
 
-# Figure S6: Policy trends
+# Figure S8: Policy trends
 
 ## Panel A: Policy topic trends
 
@@ -1514,7 +1990,7 @@ policytopic <- dat_policy %>%
   count(policy_year, policy_topic, name = "n")
 
 # Step 3: Plot (horizontal stacked bar with legend circles)
-figS6_a <- ggplot(policytopic, aes(
+figS8_a <- ggplot(policytopic, aes(
   x = policy_year,,
   y    = n,
   fill = policy_topic
@@ -1542,7 +2018,7 @@ figS6_a <- ggplot(policytopic, aes(
      x = NULL,
     y = "Policy documents citing syntheses"
   ) +
-  scale_x_continuous(breaks = seq(from = min(policytopic$policy_year), 
+  scale_x_continuous(breaks = seq(from = min(policytopic$policy_year),
                                   to = max(policytopic$policy_year), by = 1)
                      )+
   theme_minimal(base_size = 13) +
@@ -1552,9 +2028,9 @@ figS6_a <- ggplot(policytopic, aes(
     legend.text = element_text(size = 9),
     legend.title = element_blank(),
     panel.grid = element_blank()
-    
+
   )
-figS6_a
+figS8_a
 
 ```
 
@@ -1574,7 +2050,7 @@ policy_eco <- dat_policy %>%
   count(policy_year, ecological_context, name = "n")
 
 # Step 3: Plot (horizontal stacked bar with legend circles)
-figS6_b <- ggplot(policy_eco, aes(
+figS8_b <- ggplot(policy_eco, aes(
   x    = policy_year,
   y    = n,
   fill = ecological_context
@@ -1602,7 +2078,7 @@ figS6_b <- ggplot(policy_eco, aes(
      x = NULL,
     y = "Policy documents citing syntheses"#,
   ) +
-  scale_x_continuous(breaks = seq(from = min(policy_eco$policy_year), 
+  scale_x_continuous(breaks = seq(from = min(policy_eco$policy_year),
                                   to = max(policy_eco$policy_year), by = 1)
                      )+
   theme_minimal(base_size = 13) +
@@ -1612,12 +2088,12 @@ figS6_b <- ggplot(policy_eco, aes(
     legend.text = element_text(size = 9),
     legend.title = element_blank(),
     panel.grid = element_blank()
-    
+
   )
 
-figS6_b
+figS8_b
 ```
-## Panel C: Policy document type trends 
+## Panel C: Policy document type trends
 
 ```{r}
 # Manage data
@@ -1632,7 +2108,7 @@ policytype <- dat_policy %>%
 
 
 # Step 3: Plot (horizontal stacked bar with legend circles)
-figS6_c <- ggplot(policytype, aes(
+figS8_c <- ggplot(policytype, aes(
   x    = policy_year,
   y    = n,
   fill = policy_document_type
@@ -1660,7 +2136,7 @@ figS6_c <- ggplot(policytype, aes(
      x = NULL,
     y = "Policy documents citing syntheses"
   ) +
-  scale_x_continuous(breaks = seq(from = min(policytype$policy_year), 
+  scale_x_continuous(breaks = seq(from = min(policytype$policy_year),
                                   to = max(policytype$policy_year), by = 1)
                      )+
   theme_minimal(base_size = 13) +
@@ -1670,255 +2146,231 @@ figS6_c <- ggplot(policytype, aes(
     legend.text = element_text(size = 9),
     legend.title = element_blank(),
     panel.grid = element_blank()
-    
+
   )
 
-figS6_c
+figS8_c
 ```
 
-## Patchwork-Figure 6
+## Assemble Figure S8
 ```{r}
 # Combine the panels to create the figure
-figS6 <- figS6_a + figS6_b + figS6_c + plot_layout(nrow = 3) + plot_annotation(tag_levels = "A")
+figS8 <- figS8_a + figS8_b + figS8_c + plot_layout(nrow = 3) + plot_annotation(tag_levels = "A")
 
 #Show figure
-figS6
+figS8
 
 # Save figure
-ggsave(here("Figures/raw", "Figure_S6_trends.pdf"), width = 11, height = 12, dpi = 300)
-ggsave(here("Figures/raw", "Figure_S6_trends.png"), width = 11, height = 12, dpi = 300)
+ggsave(here("Figures/raw", "Figure_S8_trends.pdf"), width = 11, height = 12, dpi = 300)
+ggsave(here("Figures/raw", "Figure_S8_trends.png"), width = 11, height = 12, dpi = 300)
 
 ```
-
-#¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
-
-# Figure S7: Policy analysis, alluvial plot all variables
-
-```{r}
-# Alluvial plot with consistent pastel colors by Document Type ----
-dat <- dat_policy |> 
-  select(policy_topic, ecological_context, policy_document_type)
-
-dat_alluvial <- dat |> 
-  group_by(policy_topic, ecological_context, policy_document_type) |> 
-  summarise(Freq = n(), .groups = "drop")
-
-# Prefix axis labels for uniqueness and reorder by frequency
-dat_alluvial2 <- dat_alluvial |>
-  mutate(
-    policy_topic        = fct_reorder(as.factor(policy_topic), Freq, .fun = sum, .desc = TRUE),
-    ecological_context  = fct_reorder(as.factor(ecological_context), Freq, .fun = sum, .desc = TRUE),
-    policy_document_type = fct_reorder(as.factor(policy_document_type), Freq, .fun = sum, .desc = TRUE)
-  ) |>
-  # 🔑 Wrap long labels in Document type only
-  mutate(
-    policy_document_type = fct_relabel(policy_document_type, ~ str_replace_all(.x, 
-                                                                      c("Government policy"        = "Government\npolicy",
-                                                                        "Regulatory Submission"    = "Regulatory\nSubmission",
-                                                                        "Intergovernmental policy" = "Intergovernmental\npolicy")))
-  )
-
-
-# Unicorn pastel palette (keys must match new labels)
-unicorn_pastel <- c(
-  "Government\npolicy"        = "#D9BDE2",
-  "Regulatory\nSubmission"    = "#BEECE0",
-  "Intergovernmental\npolicy" = "#FFB5AA",
-  "NGO report"                = "#B7D9EB",
-  "Think Tank"                = "#D6D6F8",
-  "Academic advisory"        = "#FFE3A3",
-  "Other document"           = "#B6E06E"
-)
-
-# ---- Plot ----
-figS7 <- ggplot(dat_alluvial2,
-                       aes(axis1 = policy_document_type,
-                           axis2 = ecological_context,
-                           axis3 = policy_topic,
-                           y = Freq)
-) +
-  scale_x_discrete(
-    limits = c("policy_document_type", "ecological_context", "policy_topic"),
-    labels = c("Document type", "Ecological context", "Policy topic"),
-    position = "top",
-    expand = c(.05, .05)
-  ) +
- geom_alluvium(aes(fill = policy_document_type),
-                width = 1/12, alpha = 0.8, knot.pos = 0.4) +
-  geom_stratum(aes(fill = after_stat(stratum)), 
-               color = "white", linewidth = 1.2, width = 0.2) +
-  geom_text(stat = "stratum", aes(label = after_stat(stratum)), size = 4) +
-  scale_fill_manual(values = unicorn_pastel, na.value = "#f0f0f0") +
-  
-  theme_minimal(base_size = 14) +
-  labs(y = "Count of papers", x = NULL) +
-  theme(
-    legend.position = "none",
-    axis.title.y = element_blank(),
-    axis.text.y  = element_blank(),
-    axis.ticks.y = element_blank(),
-    axis.text.x.top = element_text(face = "bold", size = 13, margin = margin(b = 10)),
-    panel.grid = element_blank(),
-    panel.border = element_blank(),
-    panel.background = element_rect(fill = "white", colour = NA),
-    plot.margin = margin(10, 10, 10, 10)
-  )
-
-
-figS7
-#ggsave(here("Figures/raw", "Figure_S7_alluvialplot.pdf"), width = 10, height = 10, dpi= 300)
-#ggsave(here("Figures/raw", "Figure_S7_alluvialplot.png"), width = 10, height = 10, dpi = 300)
-
-```
-
-
-
-#¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
-# Figure S8 - Geographical distribution of policy
-
-## Panel A: Geographical distribution policy map
-```{r}
-policy_counts <- dat_policy %>%
-  mutate(policy_country_clean = case_when(
-    policy_country %in% c("Northern Ireland", "Scotland", "United Kingdom") ~ "United Kingdom",
-    policy_country %in% c("USA", "U.S.A.", "United States") ~ "United States of America",
-    TRUE ~ policy_country
-  )) %>%
-  filter(policy_country_clean != "International") %>%
-  count(policy_country_clean, name = "n", sort = TRUE)
-
-# Get the base count for the EU
-eu_base_count <- policy_counts %>%
-  filter(policy_country_clean == "European Union") %>%
-  pull(n)
-
-# Get the counts for individual countries
-country_specific_counts <- policy_counts %>%
-  filter(policy_country_clean != "European Union")
-# ----------------------------------------------------
-# CREATE FINAL COUNTS
-# ----------------------------------------------------
-world <- ne_countries(scale = "medium", returnclass = "sf")
-
-map_data <- world %>%
-  left_join(country_specific_counts, by = c("name" = "policy_country_clean")) %>%
-  mutate(is_eu = !is.na(countrycode(name, "country.name", "eu28"))) %>%
-  mutate(n_final = case_when(
-    # For EU countries that ALSO have their own policies (e.g., Germany), ADD the counts.
-    is_eu & !is.na(n) ~ n + eu_base_count,
-    # For EU countries with NO specific policies, use the base EU count.
-    is_eu & is.na(n)  ~ eu_base_count,
-    # For non-EU countries, just use their own count.
-    !is_eu            ~ n,
-    # A fallback for any other case
-    TRUE              ~ n
-  ))
-
-# PLOT THE MAP
-fig_S8a <- ggplot(data = map_data) +
-  geom_sf(aes(fill = n_final), color = NA) + 
-  scale_fill_paletteer_c("ggthemes::Purple",
-                         na.value = "#D8D8D8FF",
-                         labels = number_format(accuracy = 1)) +
-  labs(
-    fill = "Combined policy count", # <-- Updated label for clarity
-    caption = "EU countries are shown with a base count of 24, plus any country-specific counts."
-  ) +
-  theme_void() +
-  theme(
-    legend.position = "bottom",
-    legend.title = element_text(size = 10),
-    legend.text = element_text(size = 10),
-    plot.caption = element_text(hjust = 0.5, size = 8, margin = margin(t = 5)) # Style the caption
-  ) +
-  guides(fill = guide_colorbar(
-    title.position = "top",
-    barwidth = 15,
-    barheight = 0.5
-  ))
-
-# Show figure
-fig_S8a
-
-# Save
-ggsave(here("Figures/raw", "Figure_S8a_map_policy_countries.pdf"), width = 16, height = 14)
-ggsave(here("Figures/raw", "Figure_S8a_map_policy_countries.png"), width = 16, height = 14, dpi = 300)
-```
-
-
-
-## Panel B: Top 10 policy document countries
-```{r}
-# Clean policy_country
-dat_policy <- dat_policy %>%
-  mutate(policy_country = case_when(
-    policy_country %in% c("Northern Ireland", "Scotland", "United Kingdom") ~ "United Kingdom",
-    TRUE ~ policy_country
-  ))
-
-# Clean and count countries
-policy_country <- dat_policy %>%
-  filter(!is.na(policy_country)) %>%
-  mutate(policy_country = str_trim(policy_country)) %>%
-  filter(policy_country != "") %>%
-  #distinct(study_id, year, policy_country) %>%
-  count(policy_country, name = "count")
-
-# top 10
-policy_country_top10 <- policy_country %>%
-  slice_max(count, n = 10)
-
-# Plot
-fig_S8b <- ggplot(policy_country_top10, 
-       aes(x = reorder(policy_country, count),
-           y = count,
-           fill = policy_country)
-       ) +
-    geom_col(fill = "#8074A8FF", width = 0.9) +
-    geom_text(aes(label = count), 
-              hjust = 1.2, colour = "white", size = 5
-              ) +
-    labs(
-        #title = "Policy document countries",
-        x = NULL,
-        y = "Policy documents count"
-    ) +
-   theme_minimal(base_size = 13) +
-  theme(axis.text.x = element_text(size = 14),
-        axis.text.y = element_text(size = 14),
-    legend.position = "inside",
-    #legend.position.inside = c(.15, .65),
-    #legend.text = element_text(size = 9),
-    legend.title = element_blank(),
-    panel.grid = element_blank()
-  )+
-  coord_flip()
-
-# Show figure
-fig_S8b
-
-# Save figure
-ggsave(here("Figures/raw", "Figure_S8b_toppol_countries.pdf"), width = 11, height = 8, dpi= 300)
-ggsave(here("Figures/raw", "Figure_S8b_toppol_countries.png"), width = 11, height = 8, dpi = 300)
-```
-
-## Patchwork - Figure S8
-```{r}
-# Combine panels
-fig_S8 <- fig_S8a + fig_S8b + plot_layout(nrow = 2) + plot_annotation(tag_levels = "A")
-
-# Show figure
-fig_S8
-
-# Save figure
-ggsave(here("Figures/raw", "Figure_S8_geographical_dist_policy.pdf"), width = 11, height = 8, dpi= 300)
-ggsave(here("Figures/raw", "Figure_S8_geographical_dist_policy.png"), width = 11, height = 8, dpi = 300)
-```
-
 
 #¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
 
 # Figure S9: Annual trends cited and not cited in policy: Panel A, B and C: Syntheses cited and not cited in policy - stacked bar plots
+
+## Overall annual-trend diagnostics supporting Figure S9
+
+### Panel A: Outcome per time
+
+```{r}
+# Process outcomes
+outcome_trends <- map %>%
+  filter(!is.na(outcome_category)) %>%
+  separate_rows(outcome_category, sep = ",\\s*") %>%
+  mutate(outcome_category = str_trim(outcome_category)) %>%
+  filter(outcome_category != "") %>%
+  distinct(study_id, year, outcome_category) %>%
+  count(year, outcome_category, name = "n")
+
+
+# Plot (horizontal stacked bar with legend circles)
+figS9_overall_a <- ggplot(outcome_trends, aes(
+  x    = year,
+  y    = n,
+  fill = outcome_category
+)) +
+  geom_col(width = 0.7, position = position_stack()) +
+  geom_text(
+    aes(label = n),
+    position = position_stack(vjust = 0.5),
+    size = 3,
+    colour = "white",
+    fontface = "bold"
+  ) +
+  scale_fill_paletteer_d(
+  "ggthemes::Purple_Pink_Gray",
+  name = "Outcomes trends",
+  guide = guide_legend(
+    override.aes = list(
+      shape = 21,
+      size = 4,
+      color = NA
+    )
+  )
+  ) +
+  labs(
+     x = NULL,
+    y = "Number of syntheses"#,
+  ) +
+  scale_x_continuous(breaks = seq(from = min(outcome_trends$year),
+                                  to = max(outcome_trends$year), by = 1)
+                     )+
+  theme_minimal(base_size = 13) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "inside",
+    legend.position.inside = c(.15, .65),
+    legend.text = element_text(size = 9),
+    legend.title = element_blank(),
+    panel.grid = element_blank()
+
+  )
+
+#Show plot
+figS9_overall_a
+```
+
+
+### Panel B: Noise source
+
+```{r}
+# Prepare data
+noise_trends <- map %>%
+  filter(!is.na(noise_source)) %>%
+  separate_rows(noise_source, sep = ",") %>%
+  mutate(noise_source = str_trim(noise_source)) %>%
+  filter(noise_source != "") %>%
+  distinct(study_id, year, noise_source) %>%
+  count(year, noise_source, name = "count")
+
+# Plot (horizontal stacked bar graoph with legend)
+figS9_overall_b <- ggplot(noise_trends, aes(
+  x    = year,
+  y    = count,
+  fill = noise_source
+)) +
+  geom_col(width = 0.7, position = position_stack()) +
+  geom_text(
+    aes(label = count),
+    position = position_stack(vjust = 0.5),
+    size = 3,
+    colour = "white",
+    fontface = "bold"
+  ) +
+  scale_fill_paletteer_d(
+  "ggthemes::Purple_Pink_Gray",
+  name = "Noise source",
+  guide = guide_legend(
+    override.aes = list(
+      shape = 21,
+      size = 4,
+      color = NA
+    )
+  )
+  ) +
+   labs(
+     x = NULL,
+    y = "Number of syntheses"#,
+  ) +
+  scale_x_continuous(breaks = seq(from = min(noise_trends$year),
+                                  to = max(noise_trends$year), by = 1)
+                     )+
+  theme_minimal(base_size = 13) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "inside",
+    legend.position.inside = c(.15, .65),
+    legend.text = element_text(size = 9),
+    legend.title = element_blank(),
+    panel.grid = element_blank()
+
+  )
+
+# Show pot
+figS9_overall_b
+```
+
+
+### Panel C: Environment
+
+```{r}
+
+# Prepare data
+ecosystem_trends <- map %>%
+  filter(!is.na(ecosystem_type)) %>%
+  separate_rows(ecosystem_type, sep = "[,;]") %>%
+  mutate(ecosystem_type = str_trim(ecosystem_type)) %>%
+  filter(ecosystem_type != "") %>%
+  distinct(study_id, year, ecosystem_type) %>%
+  count(year, ecosystem_type, name = "count")
+
+
+# Plot bargraph
+figS9_overall_c <-ggplot(ecosystem_trends, aes(
+  x    = year,
+  y    = count,
+  fill = ecosystem_type
+)) +
+  geom_col(width = 0.7, position = position_stack()) +
+  geom_text(
+    aes(label = count),
+    position = position_stack(vjust = 0.5),
+    size = 3,
+    colour = "white",
+    fontface = "bold"
+  ) +
+   scale_fill_paletteer_d(
+  "ggthemes::Purple_Pink_Gray",
+  name = "Environment trends",
+  guide = guide_legend(
+    override.aes = list(
+      shape = 21,
+      size = 4,
+      color = NA
+    )
+  )
+  ) +
+  labs(
+     x = NULL,
+    y = "Number of syntheses"#,
+  ) +
+  scale_x_continuous(breaks = seq(from = min(ecosystem_trends$year),
+                                  to = max(ecosystem_trends$year), by = 1)
+                     )+
+  theme_minimal(base_size = 13) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "inside",
+    legend.position.inside = c(.15, .65),
+    legend.text = element_text(size = 9),
+    legend.title = element_blank(),
+    panel.grid = element_blank()
+
+  )
+
+# Show plot
+figS9_overall_c
+
+```
+
+### Assemble the overall annual-trend diagnostic
+
+```{r}
+# We assembled the panels to create the final figure
+figS9_overall <- figS9_overall_a + figS9_overall_b + figS9_overall_c + plot_layout(nrow = 3) + plot_annotation(tag_levels = "A")
+
+# Show figure
+figS9_overall
+
+# Save figure
+#ggsave(here("Figures/raw", "Figure_S9_overall_trends.pdf"), width = 11, height = 10, dpi = 300)
+#ggsave(here("Figures/raw", "Figure_S9_overall_trends.png"), width = 11, height = 10, dpi = 300)
+
+```
+
+
+#¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
+
+
 ```{r}
 # Tidy data
 tidy_trends <- map %>%
@@ -1931,7 +2383,7 @@ tidy_trends <- map %>%
   filter(!is.na(category_value), category_value != "") %>%
   separate_rows(category_value, sep = "[,;]\\s*") %>%
   mutate(category_value = str_trim(category_value)) %>%
-  
+
 # Filter out "NA" values as requested
   filter(category_value != "NA") %>%
  # Selecting columns to plot
@@ -1940,10 +2392,10 @@ tidy_trends <- map %>%
 
 # Creating a plotting function
 create_trend_plot <- function(df, legend_title, plot_title = NULL) {
-  
+
   ggplot(df, aes(x = year, y = n, fill = category_value)) +
     geom_col(width = 0.8, position = position_stack()) +
-    
+
     # Count for each segment inside the bar
     geom_text(
       aes(label = n),
@@ -1952,7 +2404,7 @@ create_trend_plot <- function(df, legend_title, plot_title = NULL) {
       colour = "white",
       fontface = "bold"
     ) +
-    
+
     scale_fill_paletteer_d("ggthemes::Purple_Pink_Gray", name = legend_title) +
     scale_x_continuous(
       breaks = seq(2008, 2025, 1),
@@ -1961,7 +2413,7 @@ create_trend_plot <- function(df, legend_title, plot_title = NULL) {
     scale_y_continuous(
       limits = c(0, 30),
       breaks = seq(0, 30, 5)
-  )+ 
+  )+
     labs(
       title = plot_title, # Title will be applied only if provided
       x = NULL,
@@ -2050,7 +2502,7 @@ p_F <- tidy_trends %>%
         axis.title.y = element_blank(),
         axis.title.x = element_text(size = 18))
 
-# See plots 
+# See plots
 p_E
 p_F
 
@@ -2063,8 +2515,8 @@ p_F
 # Assembling sub-figures in pairs for better alignment
 
 figS9_a <- (p_A + p_B) +
-  plot_layout(ncol = 2) 
-  
+  plot_layout(ncol = 2)
+
 figS9_b <- (p_C + p_D) +
   plot_layout(ncol = 2)
 
@@ -2072,37 +2524,181 @@ figS9_c <- (p_E + p_F) +
   plot_layout(ncol = 2)
 
 # Combining three rows for final figure
-  
+
 figS9 <- (figS9_a / figS9_b / figS9_c)
 
 # Show final figure
 figS9
 
 # To save the figure
-ggsave(here("Figures/raw", "FigureS9_trends_syntheses_cited_not_cited.pdf"), width = 18, height = 15, dpi = 300)
-ggsave(here("Figures/raw", "FigureS9_trends_syntheses_cited_not_cited.png"), width = 18, height = 15, dpi = 300)
+ggsave(here("Figures/raw", "Figure_S9_trends_syntheses_cited_not_cited.pdf"), width = 18, height = 15, dpi = 300)
+ggsave(here("Figures/raw", "Figure_S9_trends_syntheses_cited_not_cited.png"), width = 18, height = 15, dpi = 300)
 
 ```
 
 #¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
-# Figure S10 - CEESAT scores cited and not cited in policy
+# Figure S10: Geographical distribution of policy
+
+## Panel A: Geographical distribution policy map
+```{r}
+policy_counts <- dat_policy %>%
+  mutate(policy_country_clean = case_when(
+    policy_country %in% c("Northern Ireland", "Scotland", "United Kingdom") ~ "United Kingdom",
+    policy_country %in% c("USA", "U.S.A.", "United States") ~ "United States of America",
+    TRUE ~ policy_country
+  )) %>%
+  filter(policy_country_clean != "International") %>%
+  count(policy_country_clean, name = "n", sort = TRUE)
+
+# Get the base count for the EU
+eu_base_count <- policy_counts %>%
+  filter(policy_country_clean == "European Union") %>%
+  pull(n)
+
+# Get the counts for individual countries
+country_specific_counts <- policy_counts %>%
+  filter(policy_country_clean != "European Union")
+# ----------------------------------------------------
+# CREATE FINAL COUNTS
+# ----------------------------------------------------
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+map_data <- world %>%
+  left_join(country_specific_counts, by = c("name" = "policy_country_clean")) %>%
+  mutate(is_eu = !is.na(countrycode(name, "country.name", "eu28"))) %>%
+  mutate(n_final = case_when(
+    # For EU countries that ALSO have their own policies (e.g., Germany), ADD the counts.
+    is_eu & !is.na(n) ~ n + eu_base_count,
+    # For EU countries with NO specific policies, use the base EU count.
+    is_eu & is.na(n)  ~ eu_base_count,
+    # For non-EU countries, just use their own count.
+    !is_eu            ~ n,
+    # A fallback for any other case
+    TRUE              ~ n
+  ))
+
+# PLOT THE MAP
+figS10_a <- ggplot(data = map_data) +
+  geom_sf(aes(fill = n_final), color = NA) +
+  scale_fill_paletteer_c("ggthemes::Purple",
+                         na.value = "#D8D8D8FF",
+                         labels = number_format(accuracy = 1)) +
+  labs(
+    fill = "Combined policy count", # <-- Updated label for clarity
+    caption = "EU countries are shown with a base count of 24, plus any country-specific counts."
+  ) +
+  theme_void() +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 10),
+    plot.caption = element_text(hjust = 0.5, size = 8, margin = margin(t = 5)) # Style the caption
+  ) +
+  guides(fill = guide_colorbar(
+    title.position = "top",
+    barwidth = 15,
+    barheight = 0.5
+  ))
+
+# Show figure
+figS10_a
+
+# Save
+ggsave(here("Figures/raw", "Figure_S10a_map_policy_countries.pdf"), width = 16, height = 14)
+ggsave(here("Figures/raw", "Figure_S10a_map_policy_countries.png"), width = 16, height = 14, dpi = 300)
+```
+
+
+
+## Panel B: Top 10 policy document countries
+```{r}
+# Clean policy_country
+dat_policy <- dat_policy %>%
+  mutate(policy_country = case_when(
+    policy_country %in% c("Northern Ireland", "Scotland", "United Kingdom") ~ "United Kingdom",
+    TRUE ~ policy_country
+  ))
+
+# Clean and count countries
+policy_country <- dat_policy %>%
+  filter(!is.na(policy_country)) %>%
+  mutate(policy_country = str_trim(policy_country)) %>%
+  filter(policy_country != "") %>%
+  #distinct(study_id, year, policy_country) %>%
+  count(policy_country, name = "count")
+
+# top 10
+policy_country_top10 <- policy_country %>%
+  slice_max(count, n = 10)
+
+# Plot
+figS10_b <- ggplot(policy_country_top10,
+       aes(x = reorder(policy_country, count),
+           y = count,
+           fill = policy_country)
+       ) +
+    geom_col(fill = "#8074A8FF", width = 0.9) +
+    geom_text(aes(label = count),
+              hjust = 1.2, colour = "white", size = 5
+              ) +
+    labs(
+        #title = "Policy document countries",
+        x = NULL,
+        y = "Policy documents count"
+    ) +
+   theme_minimal(base_size = 13) +
+  theme(axis.text.x = element_text(size = 14),
+        axis.text.y = element_text(size = 14),
+    legend.position = "inside",
+    #legend.position.inside = c(.15, .65),
+    #legend.text = element_text(size = 9),
+    legend.title = element_blank(),
+    panel.grid = element_blank()
+  )+
+  coord_flip()
+
+# Show figure
+figS10_b
+
+# Save figure
+ggsave(here("Figures/raw", "Figure_S10b_toppol_countries.pdf"), width = 11, height = 8, dpi= 300)
+ggsave(here("Figures/raw", "Figure_S10b_toppol_countries.png"), width = 11, height = 8, dpi = 300)
+```
+
+## Patchwork - Figure S10
+```{r}
+# Combine panels
+figS10 <- figS10_a + figS10_b + plot_layout(nrow = 2) + plot_annotation(tag_levels = "A")
+
+# Show figure
+figS10
+
+# Save figure
+ggsave(here("Figures/raw", "Figure_S10_geographical_dist_policy.pdf"), width = 11, height = 8, dpi= 300)
+ggsave(here("Figures/raw", "Figure_S10_geographical_dist_policy.png"), width = 11, height = 8, dpi = 300)
+```
+
+
+#¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬
+
+# Figure S11: CEESAT scores cited and not cited in policy
 
 ## Panel A: CEESAT scores (syntheses cited in policy):
 
 ```{r}
 # 1. Labels
-labels <- structure(list(q = c("1.1", "2.1", "3.1", "3.2", "4.1", "4.2", 
-"4.3", "5.1", "5.2", "6.1", "6.2", "6.3", "7.1", "7.2", "7.3", 
-"8.1"), label = c("1.1 Research question and criteria", 
-"2.1 A priori protocol", "3.1 Systematic search approach", 
-"3.2 Search comprehensiveness", "4.1 Defined eligibility criteria", 
-"4.2 Consistent eligibility criteria", 
-"4.3 Reported eligibility decisions", "5.1 Critical appraisal", 
-"5.2 Critical appraisal cross-check", 
-"6.1 Data extraction method", "6.2 Data availability?", 
-"6.3 Data extraction cross-check", 
-"7.1 Choice of synthesis approach", "7.2 Appropiate meta-analysis", 
-"7.3 Variability investigation", 
+labels <- structure(list(q = c("1.1", "2.1", "3.1", "3.2", "4.1", "4.2",
+"4.3", "5.1", "5.2", "6.1", "6.2", "6.3", "7.1", "7.2", "7.3",
+"8.1"), label = c("1.1 Research question and criteria",
+"2.1 A priori protocol", "3.1 Systematic search approach",
+"3.2 Search comprehensiveness", "4.1 Defined eligibility criteria",
+"4.2 Consistent eligibility criteria",
+"4.3 Reported eligibility decisions", "5.1 Critical appraisal",
+"5.2 Critical appraisal cross-check",
+"6.1 Data extraction method", "6.2 Data availability?",
+"6.3 Data extraction cross-check",
+"7.1 Choice of synthesis approach", "7.2 Appropiate meta-analysis",
+"7.3 Variability investigation",
 "8.1 Synthesis limitations"
 )), row.names = c(NA, -16L), class = c("tbl_df", "tbl", "data.frame"
 ))
@@ -2145,57 +2741,57 @@ ceesat_not_cited_for_plot <- dat_ceesat %>%
 # 3. Create the individual plots with updated themes
 common_theme <- theme_minimal(base_size = 14) +
   theme(
-    panel.grid = element_blank(), 
+    panel.grid = element_blank(),
     axis.ticks = element_blank(),
     axis.text.x = element_text(size = 14) # Increase percentage label size for both plots
   )
 
 # Plot A: Cited
-figS10_a <- ggplot(ceesat_cited_for_plot, aes(x = fct_rev(label), y = percent, fill = value)) +
+figS11_a <- ggplot(ceesat_cited_for_plot, aes(x = fct_rev(label), y = percent, fill = value)) +
   geom_col(width = 0.8) +
   geom_text(aes(label = n), position = position_stack(vjust = 0.5), size = 5, color = "black") +
   coord_flip() +
   scale_fill_manual(name = "Score", values = c("0" = "#C73C55", "1" = "#DBA053", "3" = "#7CA982", "4" = "#E6D267"),
                     labels = c("0" = "Red", "1" = "Amber", "3" = "Green", "4" = "Gold")) +
-  labs(x = NULL, y = NULL) + 
+  labs(x = NULL, y = NULL) +
   common_theme +
   # ---- THIS LINE INCREASES THE QUESTION FONT SIZE ----
-  theme(axis.text.y = element_text(size = 14)) 
+  theme(axis.text.y = element_text(size = 14))
 
 # Plot B: Not Cited
-figS10_b <- ggplot(ceesat_not_cited_for_plot, aes(x = fct_rev(label), y = percent, fill = value)) +
+figS11_b <- ggplot(ceesat_not_cited_for_plot, aes(x = fct_rev(label), y = percent, fill = value)) +
   geom_col(width = 0.8) +
   geom_text(aes(label = n), position = position_stack(vjust = 0.5), size = 5, color = "black") +
   coord_flip() +
   scale_fill_manual(name = "Score", values = c("0" = "#C73C55", "1" = "#DBA053", "3" = "#7CA982", "4" = "#E6D267"),
                     labels = c("NA" = "N/A", "0" = "Red", "1" = "Amber", "3" = "Green", "4" = "Gold")) +
-  labs(x = NULL, y = NULL) + 
+  labs(x = NULL, y = NULL) +
   common_theme +
   theme(axis.text.y = element_blank())
 
-#figS10_a
-#figS10_b
+#figS11_a
+#figS11_b
 
 ```
 
-## Patchwork- Figure S10 CEESAT
+## Patchwork- Figure S11 CEESAT
 
 ```{r}
 # Combine panels to create figure
-figS10 <- (figS10_a | figS10_b) +
+figS11 <- (figS11_a | figS11_b) +
   plot_annotation(
     tag_levels = 'A',
     caption = 'Percentage'
-  ) & 
+  ) &
   theme(
     legend.position = "none",
-    plot.caption = element_text(hjust = 0.6, size = 14) 
-  )      
+    plot.caption = element_text(hjust = 0.6, size = 14)
+  )
 
 # 5. Display the final combined plot
-figS10
-#ggsave(here("Figures/raw", "Figure_S10_CEESATcited_notcited.pdf"), width = 16, height = 9, dpi= 300)
-#ggsave(here("Figures/raw", "Figure_S10_CEESATcited_notcited.png"), width = 16, height = 9, dpi = 300)
+figS11
+#ggsave(here("Figures/raw", "Figure_S11_CEESATcited_notcited.pdf"), width = 16, height = 9, dpi= 300)
+#ggsave(here("Figures/raw", "Figure_S11_CEESATcited_notcited.png"), width = 16, height = 9, dpi = 300)
 
 ```
 
@@ -2217,7 +2813,7 @@ pkgs <- c(
 # Function to safely get BibTeX citation
 get_bib <- function(pkg) {
   tryCatch(
-    toBibtex(citation(pkg)), 
+    toBibtex(citation(pkg)),
     error = function(e) paste0("% Error getting citation for: ", pkg, "\n")
   )
 }

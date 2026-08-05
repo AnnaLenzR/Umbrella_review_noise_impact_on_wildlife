@@ -13,14 +13,16 @@ library(here)
 library(sf)
 library(rnaturalearth)
 library(circlize)
-library(ggplotify)
+library(png)
 library(patchwork)
 
 # Panel B's co-authorship network comes from bibliometrix, matching the original
 # Overview_figures.Rmd analysis. Set to FALSE to derive the same network directly
 # from the Scopus affiliation strings instead (see build_edges_direct() below);
 # both routes return the same 25 countries and 98 country pairs.
-USE_BIBLIOMETRIX <- TRUE
+# Use the cleaned Scopus affiliation strings directly. This is equivalent to the
+# bibliometrix route but avoids a version-sensitive `bibtag` import failure.
+USE_BIBLIOMETRIX <- FALSE
 
 biblio <- read_csv(here("Data", "Dataset2_bibliometric_data.csv"), show_col_types = FALSE)
 
@@ -286,13 +288,12 @@ draw_chord <- function() {
     panel.fun = function(x, y) {
       xlim <- get.cell.meta.data("xlim")
       sector <- get.cell.meta.data("sector.index")
-      # Horizontal labels: easier to read than radial ones, and they let the
-      # ring itself be drawn larger because only the left/right names push out.
+      # Radial labels match the author-approved chord diagram.
       circos.text(
         mean(xlim), 0.86, display_label(sector),
-        facing = "downward",
+        facing = "clockwise",
         niceFacing = TRUE,
-        adj = c(0.5, 0.5),
+        adj = c(0, 0.5),
         cex = 1.28,
         col = "#243746"
       )
@@ -301,12 +302,19 @@ draw_chord <- function() {
   circos.clear()
 }
 
-# aspect.ratio = 1 keeps the ring circular; without it patchwork stretches the
-# base-graphics panel to the width of the figure and the circle becomes an ellipse.
-panel_b <- as.ggplot(~ draw_chord()) +
+# Capture the base-graphics chord as a high-resolution raster grob. This keeps
+# the ring circular in patchwork without an additional conversion package.
+chord_png <- tempfile(fileext = ".png")
+grDevices::png(chord_png, width = 3000, height = 3000, res = 300, bg = colours["paper"])
+draw_chord()
+grDevices::dev.off()
+
+chord_grob <- grid::rasterGrob(png::readPNG(chord_png), interpolate = TRUE)
+unlink(chord_png)
+
+panel_b <- patchwork::wrap_elements(full = chord_grob, clip = FALSE) +
   labs(tag = "B") +
   theme(
-    aspect.ratio = 1,
     plot.background = element_rect(fill = colours["paper"], colour = NA),
     plot.tag = element_text(face = "bold", size = base_size + 6, colour = colours["ink"]),
     plot.tag.position = c(0, 1),
